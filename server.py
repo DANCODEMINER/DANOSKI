@@ -852,6 +852,12 @@ def fetch_ads():
     # TODO: Integrate your ads provider API here to return ads for the user
     return jsonify({"message": "Ads API integration placeholder"})
 
+from flask import send_from_directory
+
+@app.route('/<path:filename>')
+def serve_static(filename):
+    return send_from_directory('static', filename)
+
 # === RUN SERVER ===
 if __name__ == "__main__":
     import pytz  # required for timezone logic in mining functions
