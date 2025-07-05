@@ -37,7 +37,7 @@ async function signupUser() {
     const data = await res.json();
 
     if (res.ok) {
-      alert("✅ " + data.message);
+      document.getElementById("otp-message").innerText = data.message;
       showForm("otp-form"); // show OTP form
     } else {
       alert("❌ " + data.error);
