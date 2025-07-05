@@ -168,11 +168,6 @@ def generate_otp():
     return str(random.randint(100000, 999999))
 
 def log_user_action(user_id, action):
-    # Placeholder function for logging user actions.
-    # Currently does nothing since DB is not set up.
-    pass
-
-def log_user_action(user_id, action):
     conn = get_db()
     cur = conn.cursor()
     cur.execute(
@@ -288,14 +283,15 @@ def create_account():
 # === USER LOGIN ===
 
 @app.route("/user/login", methods=["POST"])
-def log_user_action(user_id, action):
+def user_login():
+    data = request.json
+    email = data.get("email")
+    password = data.get("password")
+
     conn = get_db()
     cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO user_logs (user_id, action) VALUES (%s, %s)",
-        (user_id, action)
-    )
-    conn.commit()
+    cur.execute("SELECT id, password FROM users WHERE email = %s", (email,))
+    user = cur.fetchone()
     cur.close()
     conn.close()
 
@@ -303,6 +299,10 @@ def log_user_action(user_id, action):
         user_id = user[0]
         log_user_action(user_id, "User logged in")
         return jsonify({"message": "Login successful."})
+
+    # Log failed login if user exists
+    if user:
+        log_user_action(user[0], "Failed login attempt")
 
     return jsonify({"error": "Invalid credentials."}), 401
 
