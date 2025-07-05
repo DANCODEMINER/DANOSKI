@@ -20,7 +20,9 @@
       <a href="#" onclick="showForm('forgot')">🔒 Forgot Password</a>
     </div>
     <div class="form-container">
-      <form id="login-form" onsubmit="event.preventDefault(); loginUser();">
+
+      <!-- LOGIN FORM -->
+<form id="login-form" onsubmit="event.preventDefault(); loginUser();">
   <h2>Login to Dashboard</h2>
   <input type="email" id="login-email" placeholder="Email" required />
   <input type="password" id="login-password" placeholder="Password" required />
@@ -29,8 +31,10 @@
     <a href="#" onclick="showForm('register')">Create Account</a>
     <a href="#" onclick="showForm('forgot')">Forgot Password?</a>
   </div>
-      </form>
-      <form id="pin-verify-form" style="display: none;" onsubmit="event.preventDefault(); verifyLoginPin();">
+</form>
+
+<!-- LOGIN PIN VERIFY FORM -->
+<form id="pin-verify-form" style="display: none;" onsubmit="event.preventDefault(); verifyLoginPin();">
   <h2>Enter Your PIN</h2>
   <div style="display: flex; justify-content: center; gap: 10px;">
     <input type="text" class="pin-input" id="pin1" maxlength="1" />
@@ -39,21 +43,23 @@
     <input type="text" class="pin-input" id="pin4" maxlength="1" />
   </div>
   <button class="btn" type="submit" style="margin-top: 20px;">Verify PIN</button>
-      </form>
-      <form id="register-form" style="display: none;" onsubmit="event.preventDefault(); signupUser();">
+</form>
+
+<!-- REGISTER FORM (NO PIN HERE) -->
+<form id="register-form" style="display: none;" onsubmit="event.preventDefault(); signupUser();">
   <h2>Create Account</h2>
   <input type="text" id="signup-fullname" placeholder="Full Name" required />
   <input type="text" id="signup-country" placeholder="Country" required />
   <input type="email" id="signup-email" placeholder="Email" required />
   <input type="password" id="signup-password" placeholder="Password" required />
-  <input type="text" id="signup-pin" placeholder="Set 4-digit PIN" required />
   <button class="btn" type="submit">SIGN UP</button>
   <div class="form-links">
     <a href="#" onclick="showForm('login')">Back to Login</a>
   </div>
-      </form>
+</form>
 
-      <form id="otp-form" onsubmit="event.preventDefault(); verifyOtp();" style="display: none;">
+<!-- OTP FORM -->
+<form id="otp-form" onsubmit="event.preventDefault(); verifyOtp();" style="display: none;">
   <h2>Verify OTP</h2>
   <input type="email" id="otp-email" placeholder="Email" required />
   <input type="text" id="otp-code" placeholder="Enter OTP" required />
@@ -61,9 +67,10 @@
   <div class="form-links">
     <a href="#" onclick="showForm('login')">Back to Login</a>
   </div>
-      </form>
+</form>
 
-      <form id="pin-form" style="display: none;" onsubmit="event.preventDefault(); setUserPin();">
+<!-- PIN SETUP FORM -->
+<form id="pin-form" style="display: none;" onsubmit="event.preventDefault(); setUserPin();">
   <h2>Set Your 4-Digit PIN</h2>
 
   <!-- First PIN -->
@@ -82,27 +89,34 @@
     <input type="text" maxlength="1" class="pin-input" id="conf4" required />
   </div>
 
+  <!-- Hidden email holder -->
   <input type="hidden" id="pin-email" />
 
-  <button class="btn" type="button" onclick="setUserPin()">Create Account</button>
-
+  <button class="btn" type="submit">Create Account</button>
   <div class="form-links">
     <a href="#" onclick="showForm('login')">Back to Login</a>
   </div>
-      </form>
+</form>
 
-      <form id="forgot-form" style="display: none;">
-        <h2>Reset PIN</h2>
-        <input type="email" placeholder="Email" required />
-        <input type="text" placeholder="Enter OTP" required />
-        <input type="text" placeholder="New PIN" required />
-        <button class="btn" type="submit">RESET</button>
-        <div class="form-links">
-          <a href="#" onclick="showForm('login')">Back to Login</a>
-        </div>
-      </form>
-    </div>
+<!-- FORGOT PASSWORD / RESET PIN FORM -->
+<form id="forgot-form" style="display: none;" onsubmit="event.preventDefault(); resetPin();">
+  <h2>Reset PIN</h2>
+  <input type="email" id="forgot-email" placeholder="Email" required />
+  <input type="text" id="forgot-otp" placeholder="Enter OTP" required />
+  <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 1rem;">
+    <input type="text" maxlength="1" class="pin-input" id="new1" required />
+    <input type="text" maxlength="1" class="pin-input" id="new2" required />
+    <input type="text" maxlength="1" class="pin-input" id="new3" required />
+    <input type="text" maxlength="1" class="pin-input" id="new4" required />
   </div>
+  <button class="btn" type="submit">RESET</button>
+  <div class="form-links">
+    <a href="#" onclick="showForm('login')">Back to Login</a>
+  </div>
+</form>
+    </div>
+
+    </div>
 
   <div id="dashboard-page" style="display: none;">
     <div id="overlay" onclick="toggleSidebar()"></div>
