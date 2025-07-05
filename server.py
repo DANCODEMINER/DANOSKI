@@ -548,7 +548,7 @@ def withdraw():
                 (amount, amount, user_id))
 
     # Log withdrawal request
-log_user_action(user_id, f"Requested withdrawal of {amount} BTC to {wallet}")
+    log_user_action(user_id, f"Requested withdrawal of {amount} BTC to {wallet}")
 
     conn.commit()
     cur.close()
