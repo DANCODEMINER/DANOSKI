@@ -49,6 +49,15 @@ def init_db():
         );
     ''')
 
+    cur.execute('''
+    CREATE TABLE IF NOT EXISTS user_logs (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id),
+        action TEXT,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+''')
+
     # Admins table
     cur.execute('''
         CREATE TABLE IF NOT EXISTS admins (
