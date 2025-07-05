@@ -38,7 +38,7 @@ async function signupUser() {
 
     if (res.ok) {
       alert("✅ " + data.message);
-      showForm("otp"); // show OTP form
+      showForm("otp-form"); // show OTP form
     } else {
       alert("❌ " + data.error);
     }
