@@ -168,6 +168,11 @@ def generate_otp():
     return str(random.randint(100000, 999999))
 
 def log_user_action(user_id, action):
+    # Placeholder function for logging user actions.
+    # Currently does nothing since DB is not set up.
+    pass
+
+def log_user_action(user_id, action):
     conn = get_db()
     cur = conn.cursor()
     cur.execute(
