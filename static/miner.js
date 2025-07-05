@@ -37,10 +37,10 @@ async function signupUser() {
     const data = await res.json();
 
     if (res.ok) {
-      document.getElementById("otp-message").innerText = "✅ OTP sent to your email.";
-      showForm("otp-form"); // show OTP form
-    } else {
-      alert("❌ " + data.error);
+  document.getElementById("otp-message").innerText = "✅ OTP sent to your email.";
+  showForm("otp-form");
+} else {
+  alert("❌ " + data.error);
     }
   } catch (err) {
     alert("⚠️ Failed to connect to server.");
