@@ -281,13 +281,16 @@ def user_login():
 
     conn = get_db()
     cur = conn.cursor()
-    cur.execute("SELECT password FROM users WHERE email = %s", (email,))
+    cur.execute("SELECT id, password FROM users WHERE email = %s", (email,))
     user = cur.fetchone()
     cur.close()
     conn.close()
 
-    if user and bcrypt.checkpw(password.encode(), user[0].encode()):
+    if user and bcrypt.checkpw(password.encode(), user[1].encode()):
+        user_id = user[0]
+        log_user_action(user_id, "User logged in")
         return jsonify({"message": "Login successful."})
+
     return jsonify({"error": "Invalid credentials."}), 401
 
 # === USER FORGOT PASSWORD & RESET PIN ===
