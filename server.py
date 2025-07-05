@@ -580,6 +580,23 @@ def users_status():
         } for r in rows
     ])
 
+@app.route("/admin/user-logs", methods=["GET"])
+def user_logs():
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT u.email, l.action, l.timestamp
+        FROM user_logs l JOIN users u ON l.user_id = u.id
+        ORDER BY l.timestamp DESC LIMIT 100
+    """)
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return jsonify([
+        {"email": r[0], "action": r[1], "timestamp": r[2].strftime("%Y-%m-%d %H:%M:%S")}
+        for r in rows
+    ])
+
 @app.route("/admin/approve-withdrawal/<int:wid>", methods=["POST"])
 def approve_withdrawal(wid):
     conn = get_db()
