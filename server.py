@@ -283,15 +283,14 @@ def create_account():
 # === USER LOGIN ===
 
 @app.route("/user/login", methods=["POST"])
-def user_login():
-    data = request.json
-    email = data.get("email")
-    password = data.get("password")
-
+def log_user_action(user_id, action):
     conn = get_db()
     cur = conn.cursor()
-    cur.execute("SELECT id, password FROM users WHERE email = %s", (email,))
-    user = cur.fetchone()
+    cur.execute(
+        "INSERT INTO user_logs (user_id, action) VALUES (%s, %s)",
+        (user_id, action)
+    )
+    conn.commit()
     cur.close()
     conn.close()
 
