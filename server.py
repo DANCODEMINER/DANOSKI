@@ -516,6 +516,10 @@ def withdraw():
                 (user_id, amount, wallet, status))
     cur.execute("UPDATE users SET withdrawn_btc = withdrawn_btc + %s, mined_btc = mined_btc - %s WHERE id = %s",
                 (amount, amount, user_id))
+
+    # Log withdrawal request
+log_user_action(user_id, f"Requested withdrawal of {amount} BTC to {wallet}")
+
     conn.commit()
     cur.close()
     conn.close()
