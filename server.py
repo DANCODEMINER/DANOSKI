@@ -508,6 +508,78 @@ def pending_withdrawals():
 
     return jsonify([{"id": w[0], "email": w[1], "amount": float(w[2]), "wallet": w[3]} for w in pending])
 
+# === ADMIN USER MANAGEMENT ===
+
+@app.route("/admin/suspend-user", methods=["POST"])
+def suspend_user():
+    data = request.json
+    email = data.get("email")
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("UPDATE users SET suspended = TRUE WHERE email = %s", (email,))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({"message": f"{email} suspended."})
+
+
+@app.route("/admin/reactivate-user", methods=["POST"])
+def reactivate_user():
+    data = request.json
+    email = data.get("email")
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("UPDATE users SET suspended = FALSE WHERE email = %s", (email,))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({"message": f"{email} reactivated."})
+
+
+@app.route("/admin/delete-user", methods=["POST"])
+def delete_user():
+    data = request.json
+    email = data.get("email")
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("UPDATE users SET deleted = TRUE WHERE email = %s", (email,))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({"message": f"{email} soft deleted."})
+
+
+@app.route("/admin/restore-user", methods=["POST"])
+def restore_user():
+    data = request.json
+    email = data.get("email")
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("UPDATE users SET deleted = FALSE WHERE email = %s", (email,))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({"message": f"{email} restored."})
+
+
+@app.route("/admin/users-status", methods=["GET"])
+def users_status():
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT full_name, email, country, suspended, deleted FROM users")
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    return jsonify([
+        {
+            "name": r[0],
+            "email": r[1],
+            "country": r[2],
+            "status": "Suspended" if r[3] else "Deleted" if r[4] else "Active"
+        } for r in rows
+    ])
+
 @app.route("/admin/approve-withdrawal/<int:wid>", methods=["POST"])
 def approve_withdrawal(wid):
     conn = get_db()
