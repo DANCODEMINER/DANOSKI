@@ -349,6 +349,9 @@ def watch_ad():
         return jsonify({"error": "User not found."}), 404
 
     user_id = user[0]
+    
+    log_user_action(user_id, "Watched ad")
+    
     cur.execute("SELECT hash_per_ad, btc_per_hash FROM mining_settings LIMIT 1")
     setting = cur.fetchone()
     if not setting:
