@@ -37,7 +37,7 @@ async function signupUser() {
     const data = await res.json();
 
     if (res.ok) {
-      document.getElementById("otp-message").innerText = data.message;
+      document.getElementById("otp-message").innerText = "✅ OTP sent to your email.";
       showForm("otp-form"); // show OTP form
     } else {
       alert("❌ " + data.error);
