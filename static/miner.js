@@ -241,12 +241,6 @@ document.getElementById('login-form').addEventListener('submit', function(e) {
   loginSuccess();
 });
 
-document.getElementById('register-form').addEventListener('submit', function(e) {
-  e.preventDefault();
-  // TODO: connect signup to backend here
-  alert('Sign up functionality to be implemented');
-});
-
 document.getElementById('forgot-form').addEventListener('submit', function(e) {
   e.preventDefault();
   // TODO: connect forgot password to backend here
