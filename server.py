@@ -158,6 +158,17 @@ def send_otp(email, code):
 def generate_otp():
     return str(random.randint(100000, 999999))
 
+def log_user_action(user_id, action):
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO user_logs (user_id, action) VALUES (%s, %s)",
+        (user_id, action)
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
+
 def strong_password(pw):
     import re
     if len(pw) < 6:
