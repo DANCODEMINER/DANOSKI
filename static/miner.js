@@ -45,14 +45,11 @@ async function signupUser() {
     console.log("RES status:", res.status);
 
     if (res.ok) {
-      
-      // ✅ Store data for PIN creation step
       localStorage.setItem("name", fullName);
       localStorage.setItem("country", country);
       localStorage.setItem("email", email);
       localStorage.setItem("password", password);
 
-      // ✅ Continue with OTP flow
       otpMsg.style.color = "green";
       otpMsg.innerText = "✅ OTP sent to your email.";
       document.getElementById("otp-email").value = email;
@@ -122,11 +119,9 @@ async function loginUser() {
     const data = await res.json();
 
     if (res.ok) {
-      // Save email temporarily for PIN verification
       localStorage.setItem("loginEmail", email);
-
       alert("✅ Login successful. Please verify your PIN.");
-      showForm("pin-verify"); // Show PIN form
+      showForm("pin-verify");
     } else {
       alert("❌ " + data.error);
     }
@@ -172,11 +167,11 @@ async function setUserPin() {
 
 async function verifyLoginPin() {
   const email = localStorage.getItem("loginEmail");
-  const pin =
-    document.getElementById("pin1").value +
-    document.getElementById("pin2").value +
-    document.getElementById("pin3").value +
-    document.getElementById("pin4").value;
+  const pin = document.getElementById("pin1").value +
+              document.getElementById("pin2").value +
+              document.getElementById("pin3").value +
+              document.getElementById("pin4").value;
+
   const pinMsg = document.getElementById("pin-message");
 
   if (pin.length !== 4) {
@@ -187,13 +182,11 @@ async function verifyLoginPin() {
     return;
   }
 
-  const payload = { email, pin };
-
   try {
     const res = await fetch("https://danoski-backend.onrender.com/user/verify-login-pin", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({ email, pin })
     });
 
     const data = await res.json();
@@ -252,7 +245,53 @@ function checkPinMatch() {
   }
 }
 
-// Logout user and go back to login page
+function checkPinLength() {
+  const pin = document.getElementById("pin1").value +
+              document.getElementById("pin2").value +
+              document.getElementById("pin3").value +
+              document.getElementById("pin4").value;
+
+  const btn = document.getElementById("create-account-btn");
+
+  if (btn) {
+    if (pin.length === 4) {
+      btn.disabled = false;
+      btn.style.opacity = "1";
+      btn.style.cursor = "pointer";
+    } else {
+      btn.disabled = true;
+      btn.style.opacity = "0.5";
+      btn.style.cursor = "not-allowed";
+    }
+  }
+}
+
+function bindPinInputs() {
+  const inputs = ["pin1", "pin2", "pin3", "pin4"];
+  inputs.forEach((id, index) => {
+    const input = document.getElementById(id);
+    if (input) {
+      input.addEventListener("input", () => {
+        input.value = input.value.replace(/[^0-9]/g, "");
+
+        if (input.value.length === 1 && index < inputs.length - 1) {
+          const next = document.getElementById(inputs[index + 1]);
+          if (next) next.focus();
+        }
+
+        checkPinLength();
+      });
+
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Backspace" && input.value === "" && index > 0) {
+          const prev = document.getElementById(inputs[index - 1]);
+          if (prev) prev.focus();
+        }
+      });
+    }
+  });
+}
+
 function logout() {
   alert("Logging out...");
   document.getElementById("dashboard-page").style.display = "none";
@@ -279,70 +318,28 @@ setInterval(() => {
   }
 }, 1000);
 
-// Attach form submit event listeners for future backend integration
+// Attach handlers after page loads
 document.addEventListener("DOMContentLoaded", () => {
-  // If already logged in, show dashboard
   if (localStorage.getItem("isLoggedIn") === "true") {
     showDashboard();
   }
 
-  // Handle login form submission
-  document.getElementById('login-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    loginSuccess(); // Replace with actual login logic
-  });
-
-  // Handle forgot password form submission
-  document.getElementById('forgot-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    alert('Forgot password functionality to be implemented');
-  });
-
-  // === PIN Input Auto-Focus and 4-digit Enabler ===
-function bindPinInputs() {
-  const inputs = ["pin1", "pin2", "pin3", "pin4"];
-  const btn = document.getElementById("create-account-btn");
-
-  inputs.forEach((id, index) => {
-    const input = document.getElementById(id);
-    if (!input) return;
-
-    input.addEventListener("input", () => {
-      input.value = input.value.replace(/[^0-9]/g, "");
-
-      // Autofocus next
-      if (input.value.length === 1 && index < inputs.length - 1) {
-        const next = document.getElementById(inputs[index + 1]);
-        if (next) next.focus();
-      }
-
-      checkPinLength();
+  const loginForm = document.getElementById('login-form');
+  if (loginForm) {
+    loginForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      loginUser();
     });
-
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "Backspace" && input.value === "" && index > 0) {
-        const prev = document.getElementById(inputs[index - 1]);
-        if (prev) prev.focus();
-      }
-    });
-  });
-
-  function checkPinLength() {
-    const pin = document.getElementById("pin1").value +
-                document.getElementById("pin2").value +
-                document.getElementById("pin3").value +
-                document.getElementById("pin4").value;
-
-    if (btn) {
-      if (pin.length === 4) {
-        btn.disabled = false;
-        btn.style.opacity = "1";
-        btn.style.cursor = "pointer";
-      } else {
-        btn.disabled = true;
-        btn.style.opacity = "0.5";
-        btn.style.cursor = "not-allowed";
-      }
-    }
   }
-}
+
+  const forgotForm = document.getElementById('forgot-form');
+  if (forgotForm) {
+    forgotForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      alert('Forgot password functionality to be implemented');
+    });
+  }
+
+  // Enable PIN behavior on page load
+  bindPinInputs();
+});
