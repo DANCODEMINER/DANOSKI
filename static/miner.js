@@ -138,30 +138,31 @@ async function setUserPin() {
   const password = localStorage.getItem("password");
 
   const res = await fetch("https://danoski-backend.onrender.com/user/create-account", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    full_name,
-    country,
-    email,
-    password,
-    pin
-  })
-});
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      full_name,
+      country,
+      email,
+      password,
+      pin
+    })
+  });
 
   const data = await res.json();
 
   if (res.ok) {
-  alert("✅ Account created successfully!");
+    alert("✅ Account created successfully!");
 
-  // ✅ Mark user as logged in
-  localStorage.setItem("isLoggedIn", "true");
+    // ✅ Mark user as logged in
+    localStorage.setItem("isLoggedIn", "true");
 
-  // ✅ Show dashboard
-  showDashboard();
-} else {
-  alert("❌ " + data.error);
+    // ✅ Show dashboard
+    showDashboard();
+  } else {
+    alert("❌ " + data.error);
   }
+} // ✅ This was the missing closing brace
 
 async function verifyLoginPin() {
   const email = localStorage.getItem("loginEmail");
