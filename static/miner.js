@@ -53,6 +53,7 @@ async function signupUser() {
 async function verifyOtp() {
   const email = document.getElementById("otp-email").value.trim();
   const otp = document.getElementById("otp-code").value.trim();
+  const otpMsg = document.getElementById("otp-message");
 
   try {
     const res = await fetch("https://danoski-backend.onrender.com/user/verify-otp", {
@@ -66,14 +67,17 @@ async function verifyOtp() {
     const data = await res.json();
 
     if (res.ok) {
-      alert("✅ " + data.message);
+      otpMsg.style.color = "green";
+      otpMsg.innerText = "✅ OTP verified. Proceed to set your PIN.";
       showForm("setpin");
-      document.getElementById("pin-email").value = email; // Pre-fill for set pin
+      document.getElementById("pin-email").value = email;
     } else {
-      alert("❌ " + data.error);
+      otpMsg.style.color = "red";
+      otpMsg.innerText = "❌ " + (data.error || "Invalid OTP.");
     }
   } catch (err) {
-    alert("⚠️ Failed to verify OTP.");
+    otpMsg.style.color = "orange";
+    otpMsg.innerText = "⚠️ Failed to connect to server.";
     console.error(err);
   }
 }
