@@ -245,12 +245,19 @@ def verify_otp():
     cur = conn.cursor()
     cur.execute("SELECT code FROM otps WHERE email = %s ORDER BY id DESC LIMIT 1", (email,))
     row = cur.fetchone()
+
     print(f"OTP input: {otp_input}")
     print(f"DB OTP: {row[0] if row else 'No OTP found'}")
-    if not row or row[0] != otp_input:
+
+    if not row or str(row[0]).strip() != str(otp_input).strip():
         cur.close()
         conn.close()
         return jsonify({"error": "Invalid OTP."}), 400
+
+    # Optionally delete OTP after use
+    cur.execute("DELETE FROM otps WHERE email = %s", (email,))
+    conn.commit()
+
     cur.close()
     conn.close()
     return jsonify({"message": "OTP verified. Proceed to set PIN."})
