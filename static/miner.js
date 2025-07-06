@@ -13,7 +13,7 @@ async function signupUser() {
   const password = document.getElementById("signup-password").value.trim();
   const otpMsg = document.getElementById("otp-message");
 
-  signupData = {
+  const signupData = {
     full_name: fullName,
     country: country,
     email: email,
@@ -32,10 +32,17 @@ async function signupUser() {
     const data = await res.json();
 
     if (res.ok) {
+      // ✅ Store data for PIN creation step
+      localStorage.setItem("name", fullName);
+      localStorage.setItem("country", country);
+      localStorage.setItem("email", email);
+      localStorage.setItem("password", password);
+
+      // ✅ Continue with OTP flow
       otpMsg.style.color = "green";
       otpMsg.innerText = "✅ OTP sent to your email.";
-      document.getElementById("otp-email").value = email; // set hidden email input
-      showForm("otp-form"); // SHOW OTP FORM CORRECTLY
+      document.getElementById("otp-email").value = email;
+      showForm("otp-form");
       otpMsg.scrollIntoView({ behavior: "smooth", block: "center" });
     } else {
       otpMsg.style.color = "red";
