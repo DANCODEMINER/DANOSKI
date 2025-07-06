@@ -120,49 +120,40 @@ function loginUser() {
 }
 
 function setUserPin() {
-  const pin1 = document.getElementById("pin1").value;
-  const pin2 = document.getElementById("pin2").value;
-  const pin3 = document.getElementById("pin3").value;
-  const pin4 = document.getElementById("pin4").value;
-  const pinMessage = document.getElementById("pin-message");
-
-  const pin = pin1 + pin2 + pin3 + pin4;
-
-  if (pin.length < 4 || /[^0-9]/.test(pin)) {
-    pinMessage.innerText = "❌ Enter a valid 4-digit PIN";
-    return;
-  }
+  const pin = document.getElementById("pin1").value +
+              document.getElementById("pin2").value +
+              document.getElementById("pin3").value +
+              document.getElementById("pin4").value;
 
   const full_name = localStorage.getItem("name");
   const country = localStorage.getItem("country");
   const email = localStorage.getItem("email");
   const password = localStorage.getItem("password");
 
+  if (pin.length !== 4) {
+    document.getElementById("pin-message").innerText = "Please enter a 4-digit PIN.";
+    return;
+  }
+
   fetch("https://danoski-backend.onrender.com/user/create-account", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      full_name,
-      country,
-      email,
-      password,
-      pin
+    body: JSON.stringify({ full_name, country, email, password, pin })
+  })
+    .then(res => res.json().then(data => ({ ok: res.ok, data })))
+    .then(({ ok, data }) => {
+      if (ok) {
+        alert("✅ Account created successfully!");
+        localStorage.setItem("isLoggedIn", "true");
+        showDashboard();
+      } else {
+        alert("❌ " + data.error);
+      }
     })
-  })
-  .then(res => res.json().then(data => ({ ok: res.ok, data })))
-  .then(({ ok, data }) => {
-    if (ok) {
-      alert("✅ Account created successfully!");
-      localStorage.setItem("isLoggedIn", "true");
-      showDashboard();
-    } else {
-      alert("❌ " + data.error);
-    }
-  })
-  .catch(err => {
-    alert("⚠️ Server connection failed.");
-    console.error(err);
-  });
+    .catch(err => {
+      alert("⚠️ Failed to connect to server.");
+      console.error(err);
+    });
 }
 
 // === PIN Input Activation ===
