@@ -288,82 +288,39 @@ setInterval(() => {
 }, 1000);
 
 // Attach form submit event listeners for future backend integration
-document.getElementById('login-form').addEventListener('submit', function(e) {
-  e.preventDefault();
-  // TODO: connect login to backend here
-  loginSuccess();
-});
-
-document.getElementById('forgot-form').addEventListener('submit', function(e) {
-  e.preventDefault();
-  // TODO: connect forgot password to backend here
-  alert('Forgot password functionality to be implemented');
-});
-
 document.addEventListener("DOMContentLoaded", () => {
+  // Handle login form submission
+  document.getElementById('login-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    loginSuccess(); // You can replace this with real backend login logic
+  });
+
+  // Handle forgot password submission
+  document.getElementById('forgot-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    alert('Forgot password functionality to be implemented');
+  });
+
+  // Handle PIN input auto-focus, digit filtering, and match checking
   const pinInputs = document.querySelectorAll(".pin-input");
 
   pinInputs.forEach((input, index) => {
     input.addEventListener("input", () => {
-      // Allow only digits
+      // Only digits allowed
       input.value = input.value.replace(/[^0-9]/g, "");
 
-      // Move to next input if one digit entered
-      if (input.value.length === 1 && index < pinInputs.length - 1) {
-        pinInputs[index + 1].focus();
-      }
-    });
-
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "Backspace" && input.value === "" && index > 0) {
-        pinInputs[index - 1].focus();
-      }
-    });
-  });
-});
-
-document.addEventListener("DOMContentLoaded", () => {
-  const pinInputs = document.querySelectorAll(".pin-input");
-
-  pinInputs.forEach((input, index) => {
-    input.addEventListener("input", () => {
-      input.value = input.value.replace(/[^0-9]/g, "");
-
+      // Auto move to next input
       if (input.value.length === 1 && index < pinInputs.length - 1) {
         pinInputs[index + 1].focus();
       }
 
-      // Check match when last confirm input is filled
-      if (index === 7 && input.value.length === 1) {
-        checkPinMatch();
-      }
-    });
-
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "Backspace" && input.value === "" && index > 0) {
-        pinInputs[index - 1].focus();
-      }
-    });
-  });
-});
-
-document.addEventListener("DOMContentLoaded", () => {
-  const allPinInputs = document.querySelectorAll(".pin-input");
-
-  allPinInputs.forEach((input, index) => {
-    input.addEventListener("input", () => {
-      input.value = input.value.replace(/[^0-9]/g, "");
-
-      if (input.value.length === 1 && index < allPinInputs.length - 1) {
-        allPinInputs[index + 1].focus();
-      }
-
+      // Check if pins match on each input
       checkPinMatch();
     });
 
     input.addEventListener("keydown", (e) => {
       if (e.key === "Backspace" && input.value === "" && index > 0) {
-        allPinInputs[index - 1].focus();
+        pinInputs[index - 1].focus();
       }
     });
   });
