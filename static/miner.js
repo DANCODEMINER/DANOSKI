@@ -286,6 +286,11 @@ setInterval(() => {
 
 // Attach form submit event listeners for future backend integration
 document.addEventListener("DOMContentLoaded", () => {
+  // If already logged in, show dashboard
+  if (localStorage.getItem("isLoggedIn") === "true") {
+    showDashboard();
+  }
+
   // Handle login form submission
   document.getElementById('login-form').addEventListener('submit', function(e) {
     e.preventDefault();
@@ -318,10 +323,4 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   });
-});
-
-document.addEventListener("DOMContentLoaded", () => {
-  if (localStorage.getItem("isLoggedIn") === "true") {
-    showDashboard();
-  }
 });
