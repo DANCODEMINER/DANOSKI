@@ -103,20 +103,22 @@ function loginUser() {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
   })
-  .then(res => res.json().then(data => ({ ok: res.ok, data })))
-  .then(({ ok, data }) => {
-    if (ok) {
-      localStorage.setItem("loginEmail", email);
-      alert("✅ Login successful. Please verify your PIN.");
-      showForm("pin-verify");
-    } else {
-      alert("❌ " + data.error);
-    }
-  })
-  .catch(err => {
-    alert("⚠️ Failed to connect to server.");
-    console.error(err);
-  });
+    .then(res => res.json().then(data => ({ ok: res.ok, data })))
+    .then(({ ok, data }) => {
+      if (ok) {
+        // ✅ Store email for PIN check
+        localStorage.setItem("loginEmail", email);
+
+        alert("✅ Login successful! Now verify your PIN.");
+        showForm("pin-verify");
+      } else {
+        alert("❌ " + data.error);
+      }
+    })
+    .catch(err => {
+      alert("⚠️ Server error during login.");
+      console.error(err);
+    });
 }
 
 function verifyLoginPin() {
