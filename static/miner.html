@@ -74,8 +74,8 @@
 </form>
 
 <!-- PIN SETUP FORM -->
-<form id="pin-form" style="display: none;" onsubmit="event.preventDefault(); setUserPin();">
-  <h2 style="text-align:center;">Create PIN</h2>
+<form id="pin-form" style="display:none;" onsubmit="event.preventDefault(); setUserPin();">
+  <h2 style="text-align: center;">Create PIN</h2>
 
   <div class="pin-section">
     <div class="pin-row">
@@ -85,7 +85,7 @@
       <input type="password" id="pin4" maxlength="1" class="pin-input" />
     </div>
 
-    <span style="font-weight: bold;">Confirm PIN</span>
+    <label style="margin-top: 10px;">Confirm PIN</label>
 
     <div class="pin-row">
       <input type="password" id="conf1" maxlength="1" class="pin-input" />
@@ -93,12 +93,15 @@
       <input type="password" id="conf3" maxlength="1" class="pin-input" />
       <input type="password" id="conf4" maxlength="1" class="pin-input" />
     </div>
+
+    <p id="pin-message" style="color: red; text-align: center;"></p>
+
+    <input type="hidden" id="pin-email" />
+
+    <div style="text-align: center; margin-top: 10px;">
+      <button id="create-account-btn" type="submit" disabled style="opacity: 0.5; cursor: not-allowed;">Create Account</button>
+    </div>
   </div>
-
-  <input type="hidden" id="pin-email" />
-
-  <button type="submit" style="margin-top: 10px;">Set PIN</button>
-  <p id="pin-message" style="color: red; text-align:center; margin-top:10px;"></p>
 </form>
       
 <!-- FORGOT PASSWORD / RESET PIN FORM -->
