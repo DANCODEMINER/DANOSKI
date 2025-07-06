@@ -91,56 +91,7 @@ async function verifyOtp() {
   }, 5000);
 }
 
-async function setUserPin() {
-  const email = document.getElementById("pin-email").value.trim();
 
-  const pin = document.getElementById("pin1").value +
-              document.getElementById("pin2").value +
-              document.getElementById("pin3").value +
-              document.getElementById("pin4").value;
-
-  const confirmPin = document.getElementById("conf1").value +
-                     document.getElementById("conf2").value +
-                     document.getElementById("conf3").value +
-                     document.getElementById("conf4").value;
-
-  if (pin.length !== 4 || confirmPin.length !== 4) {
-    alert("⚠️ Please enter 4 digits in both PIN fields.");
-    return;
-  }
-
-  if (pin !== confirmPin) {
-    alert("❌ PIN mismatch. Please try again.");
-    return;
-  }
-
-  const payload = {
-    ...signupData,
-    pin: pin
-  };
-
-  try {
-    const res = await fetch("https://danoski-backend.onrender.com/user/create-account", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload)
-    });
-
-    const data = await res.json();
-
-    if (res.ok) {
-      alert("✅ " + data.message);
-      showForm("login");
-    } else {
-      alert("❌ " + data.error);
-    }
-  } catch (err) {
-    alert("⚠️ Failed to create account.");
-    console.error(err);
-  }
-}
 
 async function loginUser() {
   const email = document.getElementById("login-email").value.trim();
@@ -168,6 +119,72 @@ async function loginUser() {
     }
   } catch (err) {
     alert("⚠️ Failed to connect to server.");
+    console.error(err);
+  }
+}
+
+async function setUserPin() {
+  const email = document.getElementById("pin-email").value.trim();
+  const pinMsg = document.getElementById("pin-message");
+
+  const pin = 
+    document.getElementById("pin1").value +
+    document.getElementById("pin2").value +
+    document.getElementById("pin3").value +
+    document.getElementById("pin4").value;
+
+  const confirmPin =
+    document.getElementById("conf1").value +
+    document.getElementById("conf2").value +
+    document.getElementById("conf3").value +
+    document.getElementById("conf4").value;
+
+  // Reset message first
+  pinMsg.innerText = "";
+
+  if (pin.length !== 4 || confirmPin.length !== 4) {
+    pinMsg.style.color = "orange";
+    pinMsg.innerText = "⚠️ Please enter 4 digits in both PIN fields.";
+    return;
+  }
+
+  if (pin !== confirmPin) {
+    pinMsg.style.color = "red";
+    pinMsg.innerText = "❌ PIN mismatch. Please try again.";
+    return;
+  }
+
+  const payload = {
+    ...signupData, // includes name, country, email, password
+    pin: pin
+  };
+
+  try {
+    const res = await fetch("https://danoski-backend.onrender.com/user/create-account", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      pinMsg.style.color = "green";
+      pinMsg.innerText = "✅ " + data.message;
+      showForm("login");
+
+      setTimeout(() => {
+        pinMsg.innerText = "";
+      }, 5000);
+    } else {
+      pinMsg.style.color = "red";
+      pinMsg.innerText = "❌ " + (data.error || "Failed to set PIN.");
+    }
+  } catch (err) {
+    pinMsg.style.color = "orange";
+    pinMsg.innerText = "⚠️ Failed to create account.";
     console.error(err);
   }
 }
