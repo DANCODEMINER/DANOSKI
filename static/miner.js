@@ -312,3 +312,112 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 });
+
+document.addEventListener("DOMContentLoaded", () => {
+  const pinInputs = document.querySelectorAll(".pin-input");
+
+  pinInputs.forEach((input, index) => {
+    input.addEventListener("input", () => {
+      // Allow only digits
+      input.value = input.value.replace(/[^0-9]/g, "");
+
+      // Move to next input if one digit is entered
+      if (input.value.length === 1 && index < pinInputs.length - 1) {
+        pinInputs[index + 1].focus();
+      }
+    });
+
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Backspace" && input.value === "" && index > 0) {
+        pinInputs[index - 1].focus();
+      }
+    });
+  });
+});document.addEventListener("DOMContentLoaded", () => {
+  const pinInputs = document.querySelectorAll(".pin-input");
+
+  pinInputs.forEach((input, index) => {
+    input.addEventListener("input", () => {
+      // Allow only digits
+      input.value = input.value.replace(/[^0-9]/g, "");
+
+      // Move to next input if one digit is entered
+      if (input.value.length === 1 && index < pinInputs.length - 1) {
+        pinInputs[index + 1].focus();
+      }
+    });
+
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Backspace" && input.value === "" && index > 0) {
+        pinInputs[index - 1].focus();
+      }
+    });
+  document.addEventListener("DOMContentLoaded", () => {
+  const pinInputs = document.querySelectorAll(".pin-input");
+
+  pinInputs.forEach((input, index) => {
+    input.addEventListener("input", () => {
+      // Allow only digits
+      input.value = input.value.replace(/[^0-9]/g, "");
+
+      // Move to next input if one digit is entered
+      if (input.value.length === 1 && index < pinInputs.length - 1) {
+        pinInputs[index + 1].focus();
+      }
+    });
+
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Backspace" && input.value === "" && index > 0) {
+        pinInputs[index - 1].focus();
+      }
+    });
+
+
+  document.addEventListener("DOMContentLoaded", () => {
+  const pinInputs = document.querySelectorAll(".pin-input");
+
+  pinInputs.forEach((input, index) => {
+    input.addEventListener("input", () => {
+      // Allow only digits
+      input.value = input.value.replace(/[^0-9]/g, "");
+
+      // Move to next input if one digit is entered
+      if (input.value.length === 1 && index < pinInputs.length - 1) {
+        pinInputs[index + 1].focus();
+      }
+    });
+
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Backspace" && input.value === "" && index > 0) {
+        pinInputs[index - 1].focus();
+      }
+    });
+  }); // <-- closes pinInputs.forEach
+});   // <-- closes document.addEventListener
+    
+document.addEventListener("DOMContentLoaded", () => {
+  const pinInputs = document.querySelectorAll(".pin-input");
+
+  pinInputs.forEach((input, index) => {
+    input.addEventListener("input", () => {
+      // Allow only digits
+      input.value = input.value.replace(/[^0-9]/g, "");
+
+      // Move to next input if one digit is entered
+      if (input.value.length === 1 && index < pinInputs.length - 1) {
+        pinInputs[index + 1].focus();
+      }
+    });
+
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Backspace" && input.value === "" && index > 0) {
+        pinInputs[index - 1].focus();
+      }
+    });
+  });
+});
+
+
+
+
+                    
