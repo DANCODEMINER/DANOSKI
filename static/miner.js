@@ -73,7 +73,7 @@ async function verifyOtp() {
     if (res.ok) {
       otpMsg.style.color = "green";
       otpMsg.innerText = "✅ OTP verified. Proceed to set your PIN.";
-      showForm("setpin");
+      showForm("pin-form");
       document.getElementById("pin-email").value = email;
     } else {
       otpMsg.style.color = "red";
@@ -237,7 +237,7 @@ function showForm(formType) {
   document.getElementById("register-form").style.display = formType === "register" ? "block" : "none";
   document.getElementById("forgot-form").style.display = formType === "forgot" ? "block" : "none";
   document.getElementById("otp-form").style.display = formType === "otp-form" ? "block" : "none";
-  document.getElementById("pin-form").style.display = formType === "pin" ? "block" : "none";
+  document.getElementById("pin-form").style.display = formType === "pin-form" ? "block" : "none";
   document.getElementById("pin-verify-form").style.display = formType === "pin-verify" ? "block" : "none";
 }
 // Logout user and go back to login page
