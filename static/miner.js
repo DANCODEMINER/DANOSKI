@@ -128,16 +128,11 @@ async function setUserPin() {
   const email = document.getElementById("pin-email").value.trim();
   const pinMsg = document.getElementById("pin-message");
 
-  const pin = document.getElementById("pin1").value +
-              document.getElementById("pin2").value +
-              document.getElementById("pin3").value +
-              document.getElementById("pin4").value;
+  // Get and clean values
+  const pin = [1, 2, 3, 4].map(i => document.getElementById(`pin${i}`).value.trim()).join('');
+  const confirmPin = [1, 2, 3, 4].map(i => document.getElementById(`conf${i}`).value.trim()).join('');
 
-  const confirmPin = document.getElementById("conf1").value +
-                     document.getElementById("conf2").value +
-                     document.getElementById("conf3").value +
-                     document.getElementById("conf4").value;
-
+  // Validation
   if (pin.length !== 4 || confirmPin.length !== 4) {
     pinMsg.style.color = "orange";
     pinMsg.innerText = "⚠️ Please enter 4 digits in both PIN fields.";
@@ -158,9 +153,7 @@ async function setUserPin() {
   try {
     const res = await fetch("https://danoski-backend.onrender.com/user/create-account", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
 
@@ -183,7 +176,6 @@ async function setUserPin() {
     console.error(err);
   }
 }
-
 
 async function verifyLoginPin() {
   const email = localStorage.getItem("loginEmail");
