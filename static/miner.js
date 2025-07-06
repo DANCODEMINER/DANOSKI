@@ -319,3 +319,9 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 });
+
+document.addEventListener("DOMContentLoaded", () => {
+  if (localStorage.getItem("isLoggedIn") === "true") {
+    showDashboard();
+  }
+});
