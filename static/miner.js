@@ -31,6 +31,9 @@ async function signupUser() {
 
     const data = await res.json();
 
+    console.log("SIGNUP response:", data);
+    console.log("RES status:", res.status);
+
     if (res.ok) {
       // ✅ Store data for PIN creation step
       localStorage.setItem("name", fullName);
