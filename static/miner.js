@@ -292,35 +292,35 @@ document.addEventListener("DOMContentLoaded", () => {
   // Handle login form submission
   document.getElementById('login-form').addEventListener('submit', function(e) {
     e.preventDefault();
-    loginSuccess(); // You can replace this with real backend login logic
+    loginSuccess(); // Replace with actual login logic if needed
   });
 
-  // Handle forgot password submission
+  // Handle forgot password form submission
   document.getElementById('forgot-form').addEventListener('submit', function(e) {
     e.preventDefault();
     alert('Forgot password functionality to be implemented');
   });
 
-  // Handle PIN input auto-focus, digit filtering, and match checking
-  const pinInputs = document.querySelectorAll(".pin-input");
+  // Handle PIN input behavior and check for match
+  const allPinInputs = document.querySelectorAll(".pin-input");
 
-  pinInputs.forEach((input, index) => {
+  allPinInputs.forEach((input, index) => {
     input.addEventListener("input", () => {
-      // Only digits allowed
+      // Allow only digits
       input.value = input.value.replace(/[^0-9]/g, "");
 
-      // Auto move to next input
-      if (input.value.length === 1 && index < pinInputs.length - 1) {
-        pinInputs[index + 1].focus();
+      // Auto-focus next input
+      if (input.value.length === 1 && index < allPinInputs.length - 1) {
+        allPinInputs[index + 1].focus();
       }
 
-      // Check if pins match on each input
+      // ✅ Check PIN match here
       checkPinMatch();
     });
 
     input.addEventListener("keydown", (e) => {
       if (e.key === "Backspace" && input.value === "" && index > 0) {
-        pinInputs[index - 1].focus();
+        allPinInputs[index - 1].focus();
       }
     });
   });
