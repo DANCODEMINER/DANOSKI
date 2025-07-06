@@ -35,8 +35,7 @@ async function signupUser() {
     console.log("RES status:", res.status);
 
     if (res.ok) {
-
-      document.getElementById("otp-email").value = email;
+      
       // ✅ Store data for PIN creation step
       localStorage.setItem("name", fullName);
       localStorage.setItem("country", country);
