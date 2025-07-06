@@ -95,6 +95,7 @@ async function verifyOtp() {
       otpMsg.style.color = "green";
       otpMsg.innerText = "✅ OTP verified! Set your PIN.";
       showForm("pin-form");
+      attachPinListeners();
     } else {
       otpMsg.style.color = "red";
       otpMsg.innerText = "❌ " + (data.error || "Verification failed.");
