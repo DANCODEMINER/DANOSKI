@@ -224,6 +224,42 @@ async function verifyLoginPin() {
   }
 }
 
+function checkPinMatch() {
+  const pin = document.getElementById("pin1").value +
+              document.getElementById("pin2").value +
+              document.getElementById("pin3").value +
+              document.getElementById("pin4").value;
+
+  const confirm = document.getElementById("conf1").value +
+                  document.getElementById("conf2").value +
+                  document.getElementById("conf3").value +
+                  document.getElementById("conf4").value;
+
+  const pinMsg = document.getElementById("pin-message");
+  const btn = document.getElementById("create-account-btn");
+
+  if (pin.length === 4 && confirm.length === 4) {
+    if (pin === confirm) {
+      pinMsg.style.color = "green";
+      pinMsg.innerText = "✅ PINs match. You can now create your account.";
+      btn.disabled = false;
+      btn.style.opacity = "1";
+      btn.style.cursor = "pointer";
+    } else {
+      pinMsg.style.color = "red";
+      pinMsg.innerText = "❌ PIN mismatch. Please try again.";
+      btn.disabled = true;
+      btn.style.opacity = "0.5";
+      btn.style.cursor = "not-allowed";
+    }
+  } else {
+    pinMsg.innerText = "";
+    btn.disabled = true;
+    btn.style.opacity = "0.5";
+    btn.style.cursor = "not-allowed";
+  }
+}
+
 
 function showForm(formType) {
   document.getElementById("login-form").style.display = formType === "login" ? "block" : "none";
@@ -311,24 +347,24 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
-function checkPinMatch() {
-  const pin = document.getElementById("pin1").value +
-              document.getElementById("pin2").value +
-              document.getElementById("pin3").value +
-              document.getElementById("pin4").value;
+document.addEventListener("DOMContentLoaded", () => {
+  const allPinInputs = document.querySelectorAll(".pin-input");
 
-  const confirmPin = document.getElementById("conf1").value +
-                     document.getElementById("conf2").value +
-                     document.getElementById("conf3").value +
-                     document.getElementById("conf4").value;
+  allPinInputs.forEach((input, index) => {
+    input.addEventListener("input", () => {
+      input.value = input.value.replace(/[^0-9]/g, "");
 
-  const status = document.getElementById("pin-status");
+      if (input.value.length === 1 && index < allPinInputs.length - 1) {
+        allPinInputs[index + 1].focus();
+      }
 
-  if (pin !== confirmPin) {
-    status.style.color = "red";
-    status.innerText = "❌ PIN mismatch";
-  } else {
-    status.style.color = "green";
-    status.innerText = "✅ PIN matched";
-  }
-}
+      checkPinMatch();
+    });
+
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Backspace" && input.value === "" && index > 0) {
+        allPinInputs[index - 1].focus();
+      }
+    });
+  });
+});
