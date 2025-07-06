@@ -195,11 +195,12 @@ async function verifyLoginPin() {
 }
 
 
-// Show the selected form (login/register/forgot)
 function showForm(formType) {
-  document.getElementById("login-form").style.display = formType === "login" ? "block" : "none";
-  document.getElementById("register-form").style.display = formType === "register" ? "block" : "none";
-  document.getElementById("forgot-form").style.display = formType === "forgot" ? "block" : "none";
+  const forms = ["login-form", "register-form", "forgot-form", "otp-form", "pin-form", "pin-verify-form"];
+
+  forms.forEach(id => {
+    document.getElementById(id).style.display = (id === formType) ? "block" : "none";
+  });
 }
 
 // On login success, switch to dashboard
