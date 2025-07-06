@@ -297,50 +297,42 @@ def create_account():
 # === USER LOGIN ===
 @app.route("/user/login", methods=["POST"])
 def user_login():
-    try:
-        data = request.json
-        email = data.get("email")
-        password = data.get("password")
+    data = request.json
+    email = data.get("email")
+    password = data.get("password")
 
-        conn = get_db()
-        cur = conn.cursor()
-        cur.execute("SELECT id, password FROM users WHERE email = %s", (email,))
-        user = cur.fetchone()
-        cur.close()
-        conn.close()
+    if not email or not password:
+        return jsonify({"error": "Email and password are required."}), 400
 
-        if user:
-            stored_pw = user[1]
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT id, password FROM users WHERE email = %s", (email,))
+    user = cur.fetchone()
+    cur.close()
+    conn.close()
 
-            print(f"DEBUG: Stored password hash for user {user[0]}: {stored_pw!r}")
+    if user:
+        user_id = user[0]
+        stored_hash = user[1]
 
-            if not stored_pw:
-                print(f"ERROR: Stored password is empty or None for user {user[0]}")
-                return jsonify({"error": "Invalid credentials."}), 401
+        try:
+            if isinstance(stored_hash, str):
+                stored_hash = stored_hash.encode('utf-8')
 
-            if isinstance(stored_pw, str):
-                stored_pw = stored_pw.encode()
+            if bcrypt.checkpw(password.encode('utf-8'), stored_hash):
+                log_user_action(user_id, "User logged in")
+                return jsonify({"message": "Login successful."})
+            else:
+                log_user_action(user_id, "Failed login attempt")
+        except ValueError as ve:
+            print(f"bcrypt ValueError for user {user_id}: {ve}")
+            return jsonify({"error": "Server error: invalid password hash."}), 500
+        except Exception as e:
+            print(f"Unexpected error for user {user_id}: {e}")
+            return jsonify({"error": "Server error during login."}), 500
 
-            try:
-                if bcrypt.checkpw(password.encode(), stored_pw):
-                    log_user_action(user[0], "User logged in")
-                    return jsonify({"message": "Login successful."})
-                else:
-                    log_user_action(user[0], "Failed login attempt")
-                    return jsonify({"error": "Invalid credentials."}), 401
-            except ValueError as ve:
-                print(f"bcrypt ValueError for user {user[0]}: {ve}")
-                return jsonify({"error": "Server error: Invalid password hash."}), 500
-            except Exception as ex:
-                print(f"Unexpected bcrypt error for user {user[0]}: {ex}")
-                return jsonify({"error": "Server error during login."}), 500
-
-        return jsonify({"error": "Invalid credentials."}), 401
-
-    except Exception as e:
-        print("Login error:", str(e))  # Show in server log
-        return jsonify({"error": "Server error during login."}), 500
-
+    return jsonify({"error": "Invalid credentials."}), 401
+    
 @app.route("/user/verify-login-pin", methods=["POST"])
 def verify_login_pin():
     data = request.json
