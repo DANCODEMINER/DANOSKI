@@ -163,24 +163,21 @@ function verifyLoginPin() {
 }
 
 function setUserPin() {
-  const pin = document.getElementById("pin1").value +
-              document.getElementById("pin2").value +
-              document.getElementById("pin3").value +
-              document.getElementById("pin4").value;
+  const pin = 
+    document.getElementById("pin1").value +
+    document.getElementById("pin2").value +
+    document.getElementById("pin3").value +
+    document.getElementById("pin4").value;
+
+  if (pin.length !== 4) {
+    alert("Please enter a 4-digit PIN.");
+    return;
+  }
 
   const full_name = localStorage.getItem("name");
   const country = localStorage.getItem("country");
   const email = localStorage.getItem("email");
   const password = localStorage.getItem("password");
-
-  // Log the data before sending to backend
-  console.log("Sending account creation request:", {
-    full_name,
-    country,
-    email,
-    password,
-    pin
-  });
 
   fetch("https://danoski-backend.onrender.com/user/create-account", {
     method: "POST",
@@ -195,12 +192,9 @@ function setUserPin() {
   })
   .then(res => res.json().then(data => ({ ok: res.ok, data })))
   .then(({ ok, data }) => {
-    // Log the response from backend
-    console.log("Account creation response:", data);
-
     if (ok) {
       alert("✅ Account created successfully!");
-      localStorage.setItem("isLoggedIn", "true");
+      sessionStorage.setItem("isLoggedIn", "true");
       showDashboard();
     } else {
       alert("❌ " + data.error);
