@@ -127,20 +127,15 @@ async function setUserPin() {
   const email = document.getElementById("pin-email").value.trim();
   const pinMsg = document.getElementById("pin-message");
 
-  const pin = 
-    document.getElementById("pin1").value +
-    document.getElementById("pin2").value +
-    document.getElementById("pin3").value +
-    document.getElementById("pin4").value;
+  const pin = document.getElementById("pin1").value +
+              document.getElementById("pin2").value +
+              document.getElementById("pin3").value +
+              document.getElementById("pin4").value;
 
-  const confirmPin =
-    document.getElementById("conf1").value +
-    document.getElementById("conf2").value +
-    document.getElementById("conf3").value +
-    document.getElementById("conf4").value;
-
-  // Reset message first
-  pinMsg.innerText = "";
+  const confirmPin = document.getElementById("conf1").value +
+                     document.getElementById("conf2").value +
+                     document.getElementById("conf3").value +
+                     document.getElementById("conf4").value;
 
   if (pin.length !== 4 || confirmPin.length !== 4) {
     pinMsg.style.color = "orange";
@@ -155,7 +150,7 @@ async function setUserPin() {
   }
 
   const payload = {
-    ...signupData, // includes name, country, email, password
+    ...signupData,
     pin: pin
   };
 
@@ -172,19 +167,18 @@ async function setUserPin() {
 
     if (res.ok) {
       pinMsg.style.color = "green";
-      pinMsg.innerText = "✅ " + data.message;
-      showForm("login");
-
+      pinMsg.innerText = "✅ Account created successfully!";
       setTimeout(() => {
+        showForm("login");
         pinMsg.innerText = "";
-      }, 5000);
+      }, 2000);
     } else {
       pinMsg.style.color = "red";
-      pinMsg.innerText = "❌ " + (data.error || "Failed to set PIN.");
+      pinMsg.innerText = "❌ " + (data.error || "Failed to create account.");
     }
   } catch (err) {
     pinMsg.style.color = "orange";
-    pinMsg.innerText = "⚠️ Failed to create account.";
+    pinMsg.innerText = "⚠️ Failed to connect to server.";
     console.error(err);
   }
 }
