@@ -79,28 +79,21 @@
 
   <div class="pin-section">
     <div class="pin-row">
-      <input type="password" id="pin1" maxlength="1" class="pin-input" />
-      <input type="password" id="pin2" maxlength="1" class="pin-input" />
-      <input type="password" id="pin3" maxlength="1" class="pin-input" />
-      <input type="password" id="pin4" maxlength="1" class="pin-input" />
-    </div>
+    <!-- Single PIN input row -->
+<div class="pin-row">
+  <input type="password" id="pin1" maxlength="1" class="pin-input" />
+  <input type="password" id="pin2" maxlength="1" class="pin-input" />
+  <input type="password" id="pin3" maxlength="1" class="pin-input" />
+  <input type="password" id="pin4" maxlength="1" class="pin-input" />
+</div>
 
-    <label style="margin-top: 10px;">Confirm PIN</label>
+<p id="pin-message" style="color: red; text-align: center;"></p>
 
-    <div class="pin-row">
-      <input type="password" id="conf1" maxlength="1" class="pin-input" />
-      <input type="password" id="conf2" maxlength="1" class="pin-input" />
-      <input type="password" id="conf3" maxlength="1" class="pin-input" />
-      <input type="password" id="conf4" maxlength="1" class="pin-input" />
-    </div>
-
-    <p id="pin-message" style="color: red; text-align: center;"></p>
-
-    <div style="text-align: center; margin-top: 10px;">
-      <button id="create-account-btn" type="submit" disabled style="opacity: 0.5; cursor: not-allowed;">
-        Create Account
-      </button>
-    </div>
+<div style="text-align: center; margin-top: 10px;">
+  <button id="create-account-btn" type="submit" disabled style="opacity: 0.5; cursor: not-allowed;">
+    Create Account
+  </button>
+</div>
 
     <input type="hidden" id="pin-email" />
   </div>
