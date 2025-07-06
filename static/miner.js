@@ -260,6 +260,16 @@ function logout() {
   showForm('login');
 }
 
+function showDashboard() {
+  document.getElementById("login-form").style.display = "none";
+  document.getElementById("register-form").style.display = "none";
+  document.getElementById("forgot-form").style.display = "none";
+  document.getElementById("otp-form").style.display = "none";
+  document.getElementById("pin-form").style.display = "none";
+  document.getElementById("pin-verify-form").style.display = "none";
+  document.getElementById("dashboard-page").style.display = "block";
+}
+
 // BTC counter animation on dashboard
 let btcValue = 0.00000000;
 setInterval(() => {
