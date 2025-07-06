@@ -75,30 +75,32 @@
 
 <!-- PIN SETUP FORM -->
 <form id="pin-form" style="display: none;" onsubmit="event.preventDefault(); setUserPin();">
-  <h2>Create PIN</h2>
+  <h2 style="text-align:center;">Create PIN</h2>
 
-  <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 15px;">
-    <input type="password" id="pin1" maxlength="1" class="pin-input" />
-    <input type="password" id="pin2" maxlength="1" class="pin-input" />
-    <input type="password" id="pin3" maxlength="1" class="pin-input" />
-    <input type="password" id="pin4" maxlength="1" class="pin-input" />
+  <div class="pin-section">
+    <div class="pin-row">
+      <input type="password" id="pin1" maxlength="1" class="pin-input" />
+      <input type="password" id="pin2" maxlength="1" class="pin-input" />
+      <input type="password" id="pin3" maxlength="1" class="pin-input" />
+      <input type="password" id="pin4" maxlength="1" class="pin-input" />
+    </div>
+
+    <span style="font-weight: bold;">Confirm PIN</span>
+
+    <div class="pin-row">
+      <input type="password" id="conf1" maxlength="1" class="pin-input" />
+      <input type="password" id="conf2" maxlength="1" class="pin-input" />
+      <input type="password" id="conf3" maxlength="1" class="pin-input" />
+      <input type="password" id="conf4" maxlength="1" class="pin-input" />
+    </div>
   </div>
-
-  <p style="text-align: center; font-weight: bold;">Confirm PIN</p>
-
-  <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 15px;">
-    <input type="password" id="conf1" maxlength="1" class="pin-input" />
-    <input type="password" id="conf2" maxlength="1" class="pin-input" />
-    <input type="password" id="conf3" maxlength="1" class="pin-input" />
-    <input type="password" id="conf4" maxlength="1" class="pin-input" />
-  </div>
-
-  <p id="pin-status" style="text-align: center; font-weight: bold; color: red;"></p>
 
   <input type="hidden" id="pin-email" />
-  <button type="submit" style="display: block; margin: 0 auto;">Create Account</button>
-</form>
 
+  <button type="submit" style="margin-top: 10px;">Set PIN</button>
+  <p id="pin-message" style="color: red; text-align:center; margin-top:10px;"></p>
+</form>
+      
 <!-- FORGOT PASSWORD / RESET PIN FORM -->
 <form id="forgot-form" style="display: none;" onsubmit="event.preventDefault(); resetPin();">
   <h2>Reset PIN</h2>
