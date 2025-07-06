@@ -271,8 +271,9 @@ def create_account():
     password = data.get("password")
     pin = data.get("pin")
 
-    hashed_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
-    hashed_pin = bcrypt.hashpw(pin.encode(), bcrypt.gensalt())
+    # Hash and decode to UTF-8 string before storing in DB
+    hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    hashed_pin = bcrypt.hashpw(pin.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
     conn = get_db()
     cur = conn.cursor()
@@ -284,6 +285,7 @@ def create_account():
         conn.commit()
     except Exception as e:
         conn.rollback()
+        print("Create account DB error:", e)
         cur.close()
         conn.close()
         return jsonify({"error": "Failed to create account."}), 500
