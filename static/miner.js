@@ -246,8 +246,6 @@ function checkPinMatch() {
   }
 }
 
-
-
 function showForm(formType) {
   document.getElementById("login-form").style.display = formType === "login" ? "block" : "none";
   document.getElementById("register-form").style.display = formType === "register" ? "block" : "none";
@@ -255,6 +253,7 @@ function showForm(formType) {
   document.getElementById("otp-form").style.display = formType === "otp-form" ? "block" : "none";
   document.getElementById("pin-form").style.display = formType === "pin-form" ? "block" : "none";
   document.getElementById("pin-verify-form").style.display = formType === "pin-verify" ? "block" : "none";
+  document.getElementById("dashboard-page").style.display = formType === "dashboard" ? "block" : "none";
 }
 // Logout user and go back to login page
 function logout() {
