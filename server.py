@@ -245,6 +245,8 @@ def verify_otp():
     cur = conn.cursor()
     cur.execute("SELECT code FROM otps WHERE email = %s ORDER BY id DESC LIMIT 1", (email,))
     row = cur.fetchone()
+    print(f"OTP input: {otp_input}")
+    print(f"DB OTP: {row[0] if row else 'No OTP found'}")
     if not row or row[0] != otp_input:
         cur.close()
         conn.close()
