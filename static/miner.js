@@ -268,7 +268,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // ✅ Attach PIN inputs
-  bindPinInputs(); // 👈 THIS is now your main handler
+  bindPinInputs(); // 👈 This handles match/mismatch + auto focus
 });
 
 // ✅ PIN input auto-focus, match checking, and button activation
@@ -284,6 +284,7 @@ function bindPinInputs() {
       input.addEventListener("input", () => {
         input.value = input.value.replace(/[^0-9]/g, "");
         checkPinMatch();
+
         const index = inputs.indexOf(id);
         if (input.value.length === 1 && index < inputs.length - 1) {
           const nextInput = document.getElementById(inputs[index + 1]);
@@ -340,10 +341,3 @@ function checkPinMatch() {
     btn.style.cursor = "not-allowed";
   }
 }
-
-// ✅ Optional: Ensure dashboard loads on reload if logged in
-document.addEventListener("DOMContentLoaded", () => {
-  if (localStorage.getItem("isLoggedIn") === "true") {
-    showDashboard();
-  }
-});
