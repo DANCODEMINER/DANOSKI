@@ -276,15 +276,6 @@ footer {
   font-size: 14px;
 }
 
-.pin-input {
-  width: 40px;
-  height: 40px;
-  text-align: center;
-  font-size: 20px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-}
-
 .pin-section {
   display: flex;
   flex-direction: column;
@@ -300,8 +291,8 @@ footer {
 }
 
 .pin-input {
-  width: 40px;
-  height: 45px;
+  width: 45px;
+  height: 50px;
   font-size: 24px;
   text-align: center;
   border: 2px solid #ccc;
@@ -311,4 +302,19 @@ footer {
 
 .pin-input:focus {
   border-color: #4CAF50;
+}
+
+#create-account-btn {
+  font-size: 16px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  background-color: #4CAF50;
+  color: white;
+  transition: opacity 0.3s;
+}
+
+#create-account-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
