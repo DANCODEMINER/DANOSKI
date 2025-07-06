@@ -153,12 +153,15 @@ async function setUserPin() {
 
   if (res.ok) {
   alert("✅ Account created successfully!");
-  showDashboard(); // 👈 This line
+
+  // ✅ Mark user as logged in
+  localStorage.setItem("isLoggedIn", "true");
+
+  // ✅ Show dashboard
+  showDashboard();
+} else {
+  alert("❌ " + data.error);
   }
-  } else {
-    alert("❌ " + data.error);
-  }
-}
 
 async function verifyLoginPin() {
   const email = localStorage.getItem("loginEmail");
