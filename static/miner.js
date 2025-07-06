@@ -135,17 +135,17 @@ async function setUserPin() {
   const email = localStorage.getItem("email");
   const password = localStorage.getItem("password");
 
-  const res = await fetch("https://your-backend-url.com/user/create-account", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      full_name,
-      country,
-      email,
-      password,
-      pin
-    })
-  });
+  const res = await fetch("https://danoski-backend.onrender.com/user/create-account", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    full_name,
+    country,
+    email,
+    password,
+    pin
+  })
+});
 
   const data = await res.json();
 
