@@ -184,6 +184,7 @@ async function setUserPin() {
   }
 }
 
+
 async function verifyLoginPin() {
   const email = localStorage.getItem("loginEmail");
   const pin = 
@@ -298,12 +299,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
   pinInputs.forEach((input, index) => {
     input.addEventListener("input", () => {
-      // Allow only digits
       input.value = input.value.replace(/[^0-9]/g, "");
 
-      // Move to next input if one digit is entered
       if (input.value.length === 1 && index < pinInputs.length - 1) {
         pinInputs[index + 1].focus();
+      }
+
+      // Check match when last confirm input is filled
+      if (index === 7 && input.value.length === 1) {
+        checkPinMatch();
       }
     });
 
@@ -314,3 +318,25 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 });
+
+function checkPinMatch() {
+  const pin = document.getElementById("pin1").value +
+              document.getElementById("pin2").value +
+              document.getElementById("pin3").value +
+              document.getElementById("pin4").value;
+
+  const confirmPin = document.getElementById("conf1").value +
+                     document.getElementById("conf2").value +
+                     document.getElementById("conf3").value +
+                     document.getElementById("conf4").value;
+
+  const status = document.getElementById("pin-status");
+
+  if (pin !== confirmPin) {
+    status.style.color = "red";
+    status.innerText = "❌ PIN mismatch";
+  } else {
+    status.style.color = "green";
+    status.innerText = "✅ PIN matched";
+  }
+}
