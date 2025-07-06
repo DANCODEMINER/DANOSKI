@@ -261,6 +261,7 @@ function checkPinMatch() {
 }
 
 
+
 function showForm(formType) {
   document.getElementById("login-form").style.display = formType === "login" ? "block" : "none";
   document.getElementById("register-form").style.display = formType === "register" ? "block" : "none";
@@ -292,7 +293,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Handle login form submission
   document.getElementById('login-form').addEventListener('submit', function(e) {
     e.preventDefault();
-    loginSuccess(); // Replace with actual login logic if needed
+    loginSuccess(); // Replace with actual login logic
   });
 
   // Handle forgot password form submission
@@ -301,20 +302,17 @@ document.addEventListener("DOMContentLoaded", () => {
     alert('Forgot password functionality to be implemented');
   });
 
-  // Handle PIN input behavior and check for match
+  // Handle PIN input and match checking
   const allPinInputs = document.querySelectorAll(".pin-input");
 
   allPinInputs.forEach((input, index) => {
     input.addEventListener("input", () => {
-      // Allow only digits
       input.value = input.value.replace(/[^0-9]/g, "");
 
-      // Auto-focus next input
       if (input.value.length === 1 && index < allPinInputs.length - 1) {
         allPinInputs[index + 1].focus();
       }
 
-      // ✅ Check PIN match here
       checkPinMatch();
     });
 
