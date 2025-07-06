@@ -125,55 +125,35 @@ async function loginUser() {
 }
 
 async function setUserPin() {
-  const email = document.getElementById("pin-email").value.trim();
-  const pinMsg = document.getElementById("pin-message");
+  const pin = document.getElementById("pin1").value +
+              document.getElementById("pin2").value +
+              document.getElementById("pin3").value +
+              document.getElementById("pin4").value;
 
-  // Get and clean values
-  const pin = [1, 2, 3, 4].map(i => document.getElementById(`pin${i}`).value.trim()).join('');
-  const confirmPin = [1, 2, 3, 4].map(i => document.getElementById(`conf${i}`).value.trim()).join('');
+  const full_name = localStorage.getItem("name");
+  const country = localStorage.getItem("country");
+  const email = localStorage.getItem("email");
+  const password = localStorage.getItem("password");
 
-  // Validation
-  if (pin.length !== 4 || confirmPin.length !== 4) {
-    pinMsg.style.color = "orange";
-    pinMsg.innerText = "⚠️ Please enter 4 digits in both PIN fields.";
-    return;
-  }
+  const res = await fetch("https://your-backend-url.com/user/create-account", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      full_name,
+      country,
+      email,
+      password,
+      pin
+    })
+  });
 
-  if (pin !== confirmPin) {
-    pinMsg.style.color = "red";
-    pinMsg.innerText = "❌ PIN mismatch. Please try again.";
-    return;
-  }
+  const data = await res.json();
 
-  const payload = {
-    ...signupData,
-    pin: pin
-  };
-
-  try {
-    const res = await fetch("https://danoski-backend.onrender.com/user/create-account", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-
-    const data = await res.json();
-
-    if (res.ok) {
-      pinMsg.style.color = "green";
-      pinMsg.innerText = "✅ Account created successfully!";
-      setTimeout(() => {
-       showForm("admin-dashboard"); // or whatever ID you used for the admin dashboard section
-        pinMsg.innerText = "";
-      }, 2000);
-    } else {
-      pinMsg.style.color = "red";
-      pinMsg.innerText = "❌ " + (data.error || "Failed to create account.");
-    }
-  } catch (err) {
-    pinMsg.style.color = "orange";
-    pinMsg.innerText = "⚠️ Failed to connect to server.";
-    console.error(err);
+  if (res.ok) {
+    alert("✅ Account created successfully!");
+    showForm("login");
+  } else {
+    alert("❌ " + data.error);
   }
 }
 
