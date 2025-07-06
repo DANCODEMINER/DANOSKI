@@ -124,28 +124,7 @@ async function loginUser() {
   }
 }
 
-async function setUserPin() {
-  const pin = document.getElementById("pin1").value +
-              document.getElementById("pin2").value +
-              document.getElementById("pin3").value +
-              document.getElementById("pin4").value;
 
-  const full_name = localStorage.getItem("name");
-  const country = localStorage.getItem("country");
-  const email = localStorage.getItem("email");
-  const password = localStorage.getItem("password");
-
-  const res = await fetch("https://danoski-backend.onrender.com/user/create-account", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      full_name,
-      country,
-      email,
-      password,
-      pin
-    })
-  });
 
   const data = await res.json();
 
@@ -158,6 +137,43 @@ async function setUserPin() {
   }
 }
 
+function setUserPin() {
+  const pin = document.getElementById("pin1").value +
+              document.getElementById("pin2").value +
+              document.getElementById("pin3").value +
+              document.getElementById("pin4").value;
+
+  const full_name = localStorage.getItem("name");
+  const country = localStorage.getItem("country");
+  const email = localStorage.getItem("email");
+  const password = localStorage.getItem("password");
+
+  fetch("https://danoski-backend.onrender.com/user/create-account", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      full_name,
+      country,
+      email,
+      password,
+      pin
+    })
+  })
+  .then(res => res.json().then(data => ({ ok: res.ok, data })))
+  .then(({ ok, data }) => {
+    if (ok) {
+      alert("✅ Account created successfully!");
+      localStorage.setItem("isLoggedIn", "true");
+      showDashboard();
+    } else {
+      alert("❌ " + data.error);
+    }
+  })
+  .catch(err => {
+    alert("⚠️ Server connection failed.");
+    console.error(err);
+  });
+}
 
 // === PIN Input Activation ===
 function bindPinInputs() {
