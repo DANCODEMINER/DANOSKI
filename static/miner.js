@@ -331,3 +331,25 @@ document.addEventListener("DOMContentLoaded", () => {
     showDashboard();
   }
 });
+
+function attachPinListeners() {
+  const allPinInputs = document.querySelectorAll(".pin-input");
+
+  allPinInputs.forEach((input, index) => {
+    input.addEventListener("input", () => {
+      input.value = input.value.replace(/[^0-9]/g, "");
+
+      if (input.value.length === 1 && index < allPinInputs.length - 1) {
+        allPinInputs[index + 1].focus();
+      }
+
+      checkPinMatch(); // 👈 Ensure this triggers
+    });
+
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Backspace" && input.value === "" && index > 0) {
+        allPinInputs[index - 1].focus();
+      }
+    });
+  });
+}
