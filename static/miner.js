@@ -195,11 +195,20 @@ async function verifyLoginPin() {
 }
 
 
-function showForm(formType) {
-  const forms = ["login-form", "register-form", "forgot-form", "otp-form", "pin-form", "pin-verify-form"];
+function showForm(formId) {
+  const allForms = [
+    "login-form",
+    "register-form",
+    "forgot-form",
+    "otp-form",
+    "pin-form",
+    "pin-verify-form"
+  ];
 
-  forms.forEach(id => {
-    document.getElementById(id).style.display = (id === formType) ? "block" : "none";
+  allForms.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return; // skip if element not found
+    el.style.display = (id === formId) ? "block" : "none";
   });
 }
 
