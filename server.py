@@ -200,40 +200,41 @@ def convert_utc_to_local(dt, timezone_str):
     local_tz = pytz.timezone(timezone_str)
     return dt.replace(tzinfo=utc).astimezone(local_tz)
 
-# === USER SIGNUP ===
 
-@app.route("/user/signup", methods=["POST"])
-def user_signup():
-    data = request.json
+@app.route("/user/create-account", methods=["POST"])
+def create_account():
+    data = request.get_json()
     full_name = data.get("full_name")
     country = data.get("country")
     email = data.get("email")
     password = data.get("password")
+    pin = data.get("pin")
 
-    if not strong_password(password):
-        return jsonify({"error": "Weak password. Use alphanumeric and symbol (min 6 chars)."}), 400
+    if not all([full_name, country, email, password, pin]):
+        return jsonify({"error": "Missing required fields."}), 400
 
-    # Check if email already exists
+    hashed_pw = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+    hashed_pin = bcrypt.hashpw(pin.encode(), bcrypt.gensalt()).decode()
+
     conn = get_db()
     cur = conn.cursor()
-    cur.execute("SELECT id FROM users WHERE email = %s", (email,))
-    if cur.fetchone():
+
+    try:
+        cur.execute(
+            "INSERT INTO users (full_name, country, email, password, pin, verified) VALUES (%s, %s, %s, %s, %s, TRUE)",
+            (full_name, country, email, hashed_pw, hashed_pin)
+        )
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        if "duplicate key" in str(e).lower() or "unique constraint" in str(e).lower():
+            return jsonify({"error": "Email already exists."}), 409
+        return jsonify({"error": "Failed to create account."}), 500
+    finally:
         cur.close()
         conn.close()
-        return jsonify({"error": "Email already registered."}), 400
 
-    hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
-    otp = generate_otp()
-
-    # Save OTP for this email
-    cur.execute("INSERT INTO otps (email, code) VALUES (%s, %s)", (email, otp))
-    conn.commit()
-    cur.close()
-    conn.close()
-
-    # Send OTP email
-    send_otp(email, otp)
-    return jsonify({"message": "OTP sent to email."})
+    return jsonify({"message": "Account created successfully."}), 201
 
 @app.route("/user/verify-otp", methods=["POST"])
 def verify_otp():
