@@ -74,32 +74,22 @@
 </form>
 
 <!-- PIN SETUP FORM -->
-<form id="pin-form" style="display: none;" onsubmit="event.preventDefault(); setUserPin();">
-  <h2>Set Your 4-Digit PIN</h2>
+<form id="pin-form" style="display:none;" onsubmit="event.preventDefault(); setUserPin();">
+  <h2>Create PIN</h2>
+  <input type="password" id="pin1" maxlength="1" class="pin-input" />
+  <input type="password" id="pin2" maxlength="1" class="pin-input" />
+  <input type="password" id="pin3" maxlength="1" class="pin-input" />
+  <input type="password" id="pin4" maxlength="1" class="pin-input" />
+  
+  <input type="password" id="conf1" maxlength="1" class="pin-input" />
+  <input type="password" id="conf2" maxlength="1" class="pin-input" />
+  <input type="password" id="conf3" maxlength="1" class="pin-input" />
+  <input type="password" id="conf4" maxlength="1" class="pin-input" />
 
-  <!-- First PIN -->
-  <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 1rem;">
-    <input type="text" maxlength="1" class="pin-input" id="pin1" required />
-    <input type="text" maxlength="1" class="pin-input" id="pin2" required />
-    <input type="text" maxlength="1" class="pin-input" id="pin3" required />
-    <input type="text" maxlength="1" class="pin-input" id="pin4" required />
-  </div>
-
-  <!-- Confirm PIN -->
-  <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 1rem;">
-    <input type="text" maxlength="1" class="pin-input" id="conf1" required />
-    <input type="text" maxlength="1" class="pin-input" id="conf2" required />
-    <input type="text" maxlength="1" class="pin-input" id="conf3" required />
-    <input type="text" maxlength="1" class="pin-input" id="conf4" required />
-  </div>
-
-  <!-- Hidden email holder -->
   <input type="hidden" id="pin-email" />
 
-  <button class="btn" type="submit">Create Account</button>
-  <div class="form-links">
-    <a href="#" onclick="showForm('login')">Back to Login</a>
-  </div>
+  <button type="submit">Set PIN</button>
+  <p id="pin-message" style="color: red;"></p>
 </form>
 
 <!-- FORGOT PASSWORD / RESET PIN FORM -->
