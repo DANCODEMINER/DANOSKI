@@ -200,94 +200,88 @@ def convert_utc_to_local(dt, timezone_str):
     local_tz = pytz.timezone(timezone_str)
     return dt.replace(tzinfo=utc).astimezone(local_tz)
 
+# === USER SIGNUP ===
+
+@app.route("/user/signup", methods=["POST"])
+def user_signup():
+    data = request.json
+    full_name = data.get("full_name")
+    country = data.get("country")
+    email = data.get("email")
+    password = data.get("password")
+
+    if not strong_password(password):
+        return jsonify({"error": "Weak password. Use alphanumeric and symbol (min 6 chars)."}), 400
+
+    # Check if email already exists
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM users WHERE email = %s", (email,))
+    if cur.fetchone():
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Email already registered."}), 400
+
+    hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
+    otp = generate_otp()
+
+    # Save OTP for this email
+    cur.execute("INSERT INTO otps (email, code) VALUES (%s, %s)", (email, otp))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    # Send OTP email
+    send_otp(email, otp)
+    return jsonify({"message": "OTP sent to email."})
+
+@app.route("/user/verify-otp", methods=["POST"])
+def verify_otp():
+    data = request.json
+    email = data.get("email")
+    otp_input = data.get("otp")
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT code FROM otps WHERE email = %s ORDER BY id DESC LIMIT 1", (email,))
+    row = cur.fetchone()
+    print(f"OTP input: {otp_input}")
+    print(f"DB OTP: {row[0] if row else 'No OTP found'}")
+    if not row or row[0] != otp_input:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Invalid OTP."}), 400
+    cur.close()
+    conn.close()
+    return jsonify({"message": "OTP verified. Proceed to set PIN."})
 
 @app.route("/user/create-account", methods=["POST"])
 def create_account():
-    data = request.get_json()
+    data = request.json
     full_name = data.get("full_name")
     country = data.get("country")
     email = data.get("email")
     password = data.get("password")
     pin = data.get("pin")
 
-    if not all([full_name, country, email, password, pin]):
-        return jsonify({"error": "Missing required fields."}), 400
-
-    hashed_pw = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-    hashed_pin = bcrypt.hashpw(pin.encode(), bcrypt.gensalt()).decode()
-
+    hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
     conn = get_db()
     cur = conn.cursor()
-
     try:
         cur.execute(
             "INSERT INTO users (full_name, country, email, password, pin, verified) VALUES (%s, %s, %s, %s, %s, TRUE)",
-            (full_name, country, email, hashed_pw, hashed_pin)
+            (full_name, country, email, hashed, pin)
         )
         conn.commit()
     except Exception as e:
         conn.rollback()
-        if "duplicate key" in str(e).lower() or "unique constraint" in str(e).lower():
-            return jsonify({"error": "Email already exists."}), 409
+        cur.close()
+        conn.close()
         return jsonify({"error": "Failed to create account."}), 500
-    finally:
-        cur.close()
-        conn.close()
-
-    return jsonify({"message": "Account created successfully."}), 201
-
-@app.route("/user/signup", methods=["POST"])
-def user_signup():
-    data = request.get_json()
-    full_name = data.get("full_name")
-    country = data.get("country")
-    email = data.get("email")
-    password = data.get("password")
-
-    if not all([full_name, country, email, password]):
-        return jsonify({"error": "Missing fields"}), 400
-
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("SELECT 1 FROM users WHERE email = %s", (email,))
-    if cur.fetchone():
-        cur.close()
-        conn.close()
-        return jsonify({"error": "Email already exists."}), 409
     cur.close()
     conn.close()
+    return jsonify({"message": "Account created successfully."})
 
-    # ✅ Generate 6-digit OTP
-    otp_code = str(random.randint(100000, 999999))
-    otp_storage[email] = {"otp": otp_code, "expires": time.time() + 300}  # 5 min expiry
-
-    print(f"🔐 OTP for {email} is {otp_code}")  # TODO: Replace with real email sending logic
-
-    return jsonify({"message": "OTP sent to your email."}), 200
-
-@app.route("/user/verify-otp", methods=["POST"])
-def verify_otp():
-    data = request.get_json()
-    email = data.get("email")
-    code = data.get("otp_code")
-
-    if not email or not code:
-        return jsonify({"error": "Email and OTP are required."}), 400
-
-    otp_record = otp_storage.get(email)
-    if not otp_record:
-        return jsonify({"error": "OTP not found."}), 404
-
-    if time.time() > otp_record["expires"]:
-        return jsonify({"error": "OTP expired."}), 410
-
-    if code != otp_record["otp"]:
-        return jsonify({"error": "Invalid OTP."}), 401
-
-    # ✅ OTP is valid — now delete it
-    del otp_storage[email]
-
-    return jsonify({"message": "OTP verified. You can now set your PIN."}), 200
 # === USER LOGIN ===
 
 @app.route("/user/login", methods=["POST"])
