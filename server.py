@@ -236,6 +236,33 @@ def create_account():
 
     return jsonify({"message": "Account created successfully."}), 201
 
+@app.route("/user/signup", methods=["POST"])
+def user_signup():
+    data = request.get_json()
+    full_name = data.get("full_name")
+    country = data.get("country")
+    email = data.get("email")
+    password = data.get("password")
+
+    if not all([full_name, country, email, password]):
+        return jsonify({"error": "Missing fields"}), 400
+
+    # Check if email already exists
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT 1 FROM users WHERE email = %s", (email,))
+    if cur.fetchone():
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Email already exists."}), 409
+
+    # Simulate sending OTP (just a success response for now)
+    print(f"🔐 Sending OTP to {email}...")  # For debug, or replace with actual email logic
+    cur.close()
+    conn.close()
+
+    return jsonify({"message": "OTP sent to your email."}), 200
+
 @app.route("/user/verify-otp", methods=["POST"])
 def verify_otp():
     data = request.json
