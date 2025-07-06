@@ -73,29 +73,32 @@
   </div>
 </form>
 
-<!-- PIN SETUP FORM -->
-<!-- PIN Setup Section -->
 <section id="pin-section" style="max-width: 400px; margin: 0 auto; padding: 20px;">
-  <form id="pin-form" style="display: none;" onsubmit="event.preventDefault(); setUserPin();">
+  <form id="pin-form" style="display: none;">
     <h2 style="text-align: center; margin-bottom: 20px;">Create PIN</h2>
 
     <!-- PIN Inputs Row -->
-    <div class="pin-row" style="text-align: center;">
+    <div class="pin-row" style="display: flex; justify-content: center; gap: 10px;">
       <input type="password" id="pin1" maxlength="1" class="pin-input" />
       <input type="password" id="pin2" maxlength="1" class="pin-input" />
       <input type="password" id="pin3" maxlength="1" class="pin-input" />
       <input type="password" id="pin4" maxlength="1" class="pin-input" />
     </div>
 
-    <!-- Create Button -->
-    <div style="text-align: center; margin-top: 15px;">
-      <button id="create-account-btn" type="submit" style="opacity: 1; cursor: pointer;">
-       Create Account
-      </button>
-    </div>
-
     <!-- Error Message -->
     <p id="pin-message" style="color: red; text-align: center; margin-top: 15px;"></p>
+
+    <!-- Create Account Button -->
+    <div style="text-align: center; margin-top: 20px;">
+      <button
+        id="create-account-btn"
+        type="button"
+        onclick="setUserPin()"
+        style="padding: 10px 20px; font-size: 16px; cursor: pointer;"
+      >
+        Create Account
+      </button>
+    </div>
   </form>
 </section>
       
