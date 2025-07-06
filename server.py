@@ -247,7 +247,6 @@ def user_signup():
     if not all([full_name, country, email, password]):
         return jsonify({"error": "Missing fields"}), 400
 
-    # Check if email already exists
     conn = get_db()
     cur = conn.cursor()
     cur.execute("SELECT 1 FROM users WHERE email = %s", (email,))
@@ -255,33 +254,40 @@ def user_signup():
         cur.close()
         conn.close()
         return jsonify({"error": "Email already exists."}), 409
-
-    # Simulate sending OTP (just a success response for now)
-    print(f"🔐 Sending OTP to {email}...")  # For debug, or replace with actual email logic
     cur.close()
     conn.close()
+
+    # ✅ Generate 6-digit OTP
+    otp_code = str(random.randint(100000, 999999))
+    otp_storage[email] = {"otp": otp_code, "expires": time.time() + 300}  # 5 min expiry
+
+    print(f"🔐 OTP for {email} is {otp_code}")  # TODO: Replace with real email sending logic
 
     return jsonify({"message": "OTP sent to your email."}), 200
 
 @app.route("/user/verify-otp", methods=["POST"])
 def verify_otp():
-    data = request.json
+    data = request.get_json()
     email = data.get("email")
-    otp_input = data.get("otp")
+    code = data.get("otp_code")
 
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("SELECT code FROM otps WHERE email = %s ORDER BY id DESC LIMIT 1", (email,))
-    row = cur.fetchone()
-    print(f"OTP input: {otp_input}")
-    print(f"DB OTP: {row[0] if row else 'No OTP found'}")
-    if not row or row[0] != otp_input:
-        cur.close()
-        conn.close()
-        return jsonify({"error": "Invalid OTP."}), 400
-    cur.close()
-    conn.close()
-    return jsonify({"message": "OTP verified. Proceed to set PIN."})
+    if not email or not code:
+        return jsonify({"error": "Email and OTP are required."}), 400
+
+    otp_record = otp_storage.get(email)
+    if not otp_record:
+        return jsonify({"error": "OTP not found."}), 404
+
+    if time.time() > otp_record["expires"]:
+        return jsonify({"error": "OTP expired."}), 410
+
+    if code != otp_record["otp"]:
+        return jsonify({"error": "Invalid OTP."}), 401
+
+    # ✅ OTP is valid — now delete it
+    del otp_storage[email]
+
+    return jsonify({"message": "OTP verified. You can now set your PIN."}), 200
 # === USER LOGIN ===
 
 @app.route("/user/login", methods=["POST"])
