@@ -166,18 +166,18 @@ async function setUserPin() {
 
 async function verifyLoginPin() {
   const email = localStorage.getItem("loginEmail");
-  const pin = 
+  const pin =
     document.getElementById("pin1").value +
     document.getElementById("pin2").value +
     document.getElementById("pin3").value +
     document.getElementById("pin4").value;
-  const pinMsg = document.getElementById("otp-message"); // You can create a similar message element for PIN form or reuse
+  const pinMsg = document.getElementById("pin-message");
 
   if (pin.length !== 4) {
-    otpMsg.style.color = "orange";
-    otpMsg.innerText = "⚠️ Please enter your 4-digit PIN.";
-    otpMsg.scrollIntoView({ behavior: "smooth", block: "center" });
-    setTimeout(() => { otpMsg.innerText = ""; }, 5000);
+    pinMsg.style.color = "orange";
+    pinMsg.innerText = "⚠️ Please enter your 4-digit PIN.";
+    pinMsg.scrollIntoView({ behavior: "smooth", block: "center" });
+    setTimeout(() => { pinMsg.innerText = ""; }, 5000);
     return;
   }
 
@@ -194,19 +194,18 @@ async function verifyLoginPin() {
 
     if (res.ok) {
       alert("✅ " + data.message);
-      document.getElementById("login-page").style.display = "none";
-      document.getElementById("dashboard-page").style.display = "block";
+      showDashboard();
     } else {
-      otpMsg.style.color = "red";
-      otpMsg.innerText = "❌ " + (data.error || "Invalid PIN.");
-      otpMsg.scrollIntoView({ behavior: "smooth", block: "center" });
-      setTimeout(() => { otpMsg.innerText = ""; }, 5000);
+      pinMsg.style.color = "red";
+      pinMsg.innerText = "❌ " + (data.error || "Invalid PIN.");
+      pinMsg.scrollIntoView({ behavior: "smooth", block: "center" });
+      setTimeout(() => { pinMsg.innerText = ""; }, 5000);
     }
   } catch (err) {
-    otpMsg.style.color = "orange";
-    otpMsg.innerText = "⚠️ Failed to verify PIN.";
-    otpMsg.scrollIntoView({ behavior: "smooth", block: "center" });
-    setTimeout(() => { otpMsg.innerText = ""; }, 5000);
+    pinMsg.style.color = "orange";
+    pinMsg.innerText = "⚠️ Failed to verify PIN.";
+    pinMsg.scrollIntoView({ behavior: "smooth", block: "center" });
+    setTimeout(() => { pinMsg.innerText = ""; }, 5000);
     console.error(err);
   }
 }
