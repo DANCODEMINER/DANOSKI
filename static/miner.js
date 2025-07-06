@@ -11,8 +11,8 @@ async function signupUser() {
   const country = document.getElementById("signup-country").value.trim();
   const email = document.getElementById("signup-email").value.trim();
   const password = document.getElementById("signup-password").value.trim();
+  const otpMsg = document.getElementById("otp-message"); // Reusing otp-message element for messages
 
-  // Save to global object
   signupData = {
     full_name: fullName,
     country: country,
@@ -26,28 +26,31 @@ async function signupUser() {
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({
-        full_name: fullName,
-        country: country,
-        email: email,
-        password: password
-      })
+      body: JSON.stringify(signupData)
     });
 
     const data = await res.json();
 
     if (res.ok) {
-      
-  document.getElementById("otp-email").value = email;
-  document.getElementById("otp-message").innerText = "✅ OTP sent to your email.";
-  showForm("otp-form");
-} else {
-  alert("❌ " + data.error);
+      otpMsg.style.color = "green";
+      otpMsg.innerText = "✅ OTP sent to your email.";
+      showForm("otp");  // make sure your showForm uses "otp" string here for otp-form
+      otpMsg.scrollIntoView({ behavior: "smooth", block: "center" });
+    } else {
+      otpMsg.style.color = "red";
+      otpMsg.innerText = "❌ " + (data.error || "Signup failed.");
+      otpMsg.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   } catch (err) {
-    alert("⚠️ Failed to connect to server.");
+    otpMsg.style.color = "orange";
+    otpMsg.innerText = "⚠️ Failed to connect to server.";
+    otpMsg.scrollIntoView({ behavior: "smooth", block: "center" });
     console.error(err);
   }
+
+  setTimeout(() => {
+    otpMsg.innerText = "";
+  }, 5000);
 }
 
 async function verifyOtp() {
@@ -171,14 +174,18 @@ async function loginUser() {
 
 async function verifyLoginPin() {
   const email = localStorage.getItem("loginEmail");
-
-  const pin = document.getElementById("pin1").value +
-              document.getElementById("pin2").value +
-              document.getElementById("pin3").value +
-              document.getElementById("pin4").value;
+  const pin = 
+    document.getElementById("pin1").value +
+    document.getElementById("pin2").value +
+    document.getElementById("pin3").value +
+    document.getElementById("pin4").value;
+  const otpMsg = document.getElementById("otp-message"); // You can create a similar message element for PIN form or reuse
 
   if (pin.length !== 4) {
-    alert("⚠️ Please enter your 4-digit PIN.");
+    otpMsg.style.color = "orange";
+    otpMsg.innerText = "⚠️ Please enter your 4-digit PIN.";
+    otpMsg.scrollIntoView({ behavior: "smooth", block: "center" });
+    setTimeout(() => { otpMsg.innerText = ""; }, 5000);
     return;
   }
 
@@ -198,10 +205,16 @@ async function verifyLoginPin() {
       document.getElementById("login-page").style.display = "none";
       document.getElementById("dashboard-page").style.display = "block";
     } else {
-      alert("❌ " + data.error);
+      otpMsg.style.color = "red";
+      otpMsg.innerText = "❌ " + (data.error || "Invalid PIN.");
+      otpMsg.scrollIntoView({ behavior: "smooth", block: "center" });
+      setTimeout(() => { otpMsg.innerText = ""; }, 5000);
     }
   } catch (err) {
-    alert("⚠️ Failed to verify PIN.");
+    otpMsg.style.color = "orange";
+    otpMsg.innerText = "⚠️ Failed to verify PIN.";
+    otpMsg.scrollIntoView({ behavior: "smooth", block: "center" });
+    setTimeout(() => { otpMsg.innerText = ""; }, 5000);
     console.error(err);
   }
 }
