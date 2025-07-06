@@ -264,22 +264,34 @@ def verify_otp():
 
 @app.route("/user/create-account", methods=["POST"])
 def create_account():
-    data = request.json
-    full_name = data.get("full_name")
-    country = data.get("country")
-    email = data.get("email")
-    password = data.get("password")
-    pin = data.get("pin")
+    data = request.json or {}
 
-    # Hash and decode to UTF-8 string before storing in DB
-    hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-    hashed_pin = bcrypt.hashpw(pin.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    full_name = data.get("full_name", "").strip()
+    country = data.get("country", "").strip()
+    email = data.get("email", "").strip()
+    password = data.get("password", "")
+    pin = data.get("pin", "")
+
+    # Basic validation
+    if not all([full_name, country, email, password, pin]):
+        return jsonify({"error": "All fields are required."}), 400
+
+    try:
+        # Hash password and pin (bcrypt returns bytes, decode to utf-8 string)
+        hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        hashed_pin = bcrypt.hashpw(pin.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    except Exception as e:
+        print("Hashing error:", e)
+        return jsonify({"error": "Error processing password."}), 500
 
     conn = get_db()
     cur = conn.cursor()
     try:
         cur.execute(
-            "INSERT INTO users (full_name, country, email, password, pin, verified) VALUES (%s, %s, %s, %s, %s, %s)",
+            """
+            INSERT INTO users (full_name, country, email, password, pin, verified)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            """,
             (full_name, country, email, hashed_password, hashed_pin, True)
         )
         conn.commit()
