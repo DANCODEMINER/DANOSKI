@@ -65,38 +65,32 @@ async function signupUser() {
 }
 
 async function verifyOtp() {
-  const email = document.getElementById("otp-email").value.trim();
+  const email = document.getElementById("otp-email").value;
   const otp = document.getElementById("otp-code").value.trim();
   const otpMsg = document.getElementById("otp-message");
 
   try {
     const res = await fetch("https://danoski-backend.onrender.com/user/verify-otp", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ email, otp })
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, otp_code: otp })
     });
 
     const data = await res.json();
 
     if (res.ok) {
       otpMsg.style.color = "green";
-      otpMsg.innerText = "✅ OTP verified. Proceed to set your PIN.";
-      showForm("pin-form");
-      document.getElementById("pin-email").value = email;
+      otpMsg.innerText = "✅ OTP verified. Please set your PIN.";
+      showForm("pin-form"); // Go to PIN setup
     } else {
       otpMsg.style.color = "red";
-      otpMsg.innerText = "❌ " + (data.error || "Invalid OTP.");
+      otpMsg.innerText = "❌ " + (data.error || "OTP verification failed.");
     }
   } catch (err) {
     otpMsg.style.color = "orange";
-    otpMsg.innerText = "⚠️ Failed to connect to server.";
-    console.error(err);
+    otpMsg.innerText = "⚠️ Network error.";
   }
 
-  // Clear OTP input and hide message after 5 seconds
-  document.getElementById("otp-code").value = "";
   setTimeout(() => {
     otpMsg.innerText = "";
   }, 5000);
