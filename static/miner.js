@@ -97,7 +97,34 @@ async function verifyOtp() {
 }
 
 async function loginUser() {
-  const email = document.getElementById("login-email").value.trim()async function setUserPin() {
+  const email = document.getElementById("login-email").value.trim();
+  const password = document.getElementById("login-password").value.trim();
+
+  const payload = { email, password };
+
+  try {
+    const res = await fetch("https://danoski-backend.onrender.com/user/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      localStorage.setItem("loginEmail", email);
+      alert("✅ Login successful. Please verify your PIN.");
+      showForm("pin-verify");
+    } else {
+      alert("❌ " + data.error);
+    }
+  } catch (err) {
+    alert("⚠️ Failed to connect to server.");
+    console.error(err);
+  }
+}
+
+async function setUserPin() {
   const pin = document.getElementById("pin1").value +
               document.getElementById("pin2").value +
               document.getElementById("pin3").value +
@@ -128,31 +155,6 @@ async function loginUser() {
     showDashboard();
   } else {
     alert("❌ " + data.error);
-  }
-  };
-  const password = document.getElementById("login-password").value.trim();
-
-  const payload = { email, password };
-
-  try {
-    const res = await fetch("https://danoski-backend.onrender.com/user/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-
-    const data = await res.json();
-
-    if (res.ok) {
-      localStorage.setItem("loginEmail", email);
-      alert("✅ Login successful. Please verify your PIN.");
-      showForm("pin-verify");
-    } else {
-      alert("❌ " + data.error);
-    }
-  } catch (err) {
-    alert("⚠️ Failed to connect to server.");
-    console.error(err);
   }
 }
 
