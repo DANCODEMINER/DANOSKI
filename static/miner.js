@@ -38,7 +38,7 @@ async function signupUser() {
 
     if (res.ok) {
   document.getElementById("otp-message").innerText = "✅ OTP sent to your email.";
-  showForm("otp");
+  showForm("otp-form");
 } else {
   alert("❌ " + data.error);
     }
@@ -199,7 +199,7 @@ function showForm(formType) {
   document.getElementById("login-form").style.display = formType === "login" ? "block" : "none";
   document.getElementById("register-form").style.display = formType === "register" ? "block" : "none";
   document.getElementById("forgot-form").style.display = formType === "forgot" ? "block" : "none";
-  document.getElementById("otp-form").style.display = formType === "otp" ? "block" : "none";  // added otp here
+  document.getElementById("otp-form").style.display = formType === "otp-form" ? "block" : "none";  // added otp here
   document.getElementById("pin-form").style.display = formType === "pin" ? "block" : "none";  // add pin if you want
   document.getElementById("pin-verify-form").style.display = formType === "pin-verify" ? "block" : "none";
 }
