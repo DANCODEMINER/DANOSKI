@@ -80,22 +80,21 @@
     <h2 style="text-align: center; margin-bottom: 20px;">Create PIN</h2>
 
     <!-- PIN Inputs Row -->
-    <div class="pin-row">
-  <input type="password" id="pin1" maxlength="1" class="pin-input" />
-  <input type="password" id="pin2" maxlength="1" class="pin-input" />
-  <input type="password" id="pin3" maxlength="1" class="pin-input" />
-  <input type="password" id="pin4" maxlength="1" class="pin-input" />
-</div>
+    <div class="pin-row" style="text-align: center;">
+      <input type="password" id="pin1" maxlength="1" class="pin-input" />
+      <input type="password" id="pin2" maxlength="1" class="pin-input" />
+      <input type="password" id="pin3" maxlength="1" class="pin-input" />
+      <input type="password" id="pin4" maxlength="1" class="pin-input" />
+    </div>
 
-<p id="pin-message" style="color: red; text-align: center;"></p>
+    <!-- Create Button -->
+    <div style="text-align: center; margin-top: 15px;">
+      <button id="create-account-btn" type="submit" disabled style="opacity: 0.5; cursor: not-allowed;">
+        Create Account
+      </button>
+    </div>
 
-<div style="text-align: center; margin-top: 10px;">
-  <button id="create-account-btn" type="submit" disabled style="opacity: 0.5; cursor: not-allowed;">
-    Create Account
-  </button>
-</div>
-
-    <!-- Message Area -->
+    <!-- Error Message -->
     <p id="pin-message" style="color: red; text-align: center; margin-top: 15px;"></p>
   </form>
 </section>
