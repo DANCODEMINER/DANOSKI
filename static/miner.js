@@ -19,6 +19,7 @@ function signupUser() {
   const country = document.getElementById("signup-country").value.trim();
   const email = document.getElementById("signup-email").value.trim();
   const password = document.getElementById("signup-password").value.trim();
+  const pin = document.getElementById("signup-pin").value.trim(); // NEW
   const otpMsg = document.getElementById("otp-message");
 
   const signupData = {
@@ -26,7 +27,7 @@ function signupUser() {
     country: country,
     email: email,
     password: password,
-    pin: pin,
+    pin: pin // NEW
   };
 
   fetch("https://danoski-backend.onrender.com/user/signup", {
@@ -41,6 +42,7 @@ function signupUser() {
       localStorage.setItem("country", country);
       localStorage.setItem("email", email);
       localStorage.setItem("password", password);
+      localStorage.setItem("pin", pin); // optional, only if needed
 
       otpMsg.style.color = "green";
       otpMsg.innerText = "✅ OTP sent to your email.";
@@ -64,6 +66,7 @@ function signupUser() {
     console.error(err);
   });
 }
+
 
 function verifyOtp() {
   const email = document.getElementById("otp-email").value.trim();
