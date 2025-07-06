@@ -74,22 +74,30 @@
 </form>
 
 <!-- PIN SETUP FORM -->
-<form id="pin-form" style="display:none;" onsubmit="event.preventDefault(); setUserPin();">
-  <h2>Create PIN</h2>
-  <input type="password" id="pin1" maxlength="1" class="pin-input" />
-  <input type="password" id="pin2" maxlength="1" class="pin-input" />
-  <input type="password" id="pin3" maxlength="1" class="pin-input" />
-  <input type="password" id="pin4" maxlength="1" class="pin-input" />
-  
-  <input type="password" id="conf1" maxlength="1" class="pin-input" />
-  <input type="password" id="conf2" maxlength="1" class="pin-input" />
-  <input type="password" id="conf3" maxlength="1" class="pin-input" />
-  <input type="password" id="conf4" maxlength="1" class="pin-input" />
+<form id="pin-form" style="display: none;" onsubmit="event.preventDefault(); setUserPin();">
+  <h2 style="text-align: center;">Create PIN</h2>
+
+  <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: 10px;">
+    <input type="password" id="pin1" maxlength="1" class="pin-input" />
+    <input type="password" id="pin2" maxlength="1" class="pin-input" />
+    <input type="password" id="pin3" maxlength="1" class="pin-input" />
+    <input type="password" id="pin4" maxlength="1" class="pin-input" />
+  </div>
+
+  <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: 10px;">
+    <input type="password" id="conf1" maxlength="1" class="pin-input" />
+    <input type="password" id="conf2" maxlength="1" class="pin-input" />
+    <input type="password" id="conf3" maxlength="1" class="pin-input" />
+    <input type="password" id="conf4" maxlength="1" class="pin-input" />
+  </div>
 
   <input type="hidden" id="pin-email" />
 
-  <button type="submit">Set PIN</button>
-  <p id="pin-message" style="color: red;"></p>
+  <div style="text-align: center;">
+    <button type="submit" style="padding: 8px 20px;">Set PIN</button>
+  </div>
+
+  <p id="pin-message" style="color: red; text-align: center; margin-top: 10px;"></p>
 </form>
 
 <!-- FORGOT PASSWORD / RESET PIN FORM -->
