@@ -262,6 +262,10 @@ def create_account():
     password = data.get("password")
     pin = data.get("pin")
 
+    # Validate all required fields are present and not empty
+    if not all([full_name, country, email, password, pin]):
+        return jsonify({"error": "All fields including PIN are required."}), 400
+
     hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
     conn = get_db()
     cur = conn.cursor()
@@ -275,6 +279,7 @@ def create_account():
         conn.rollback()
         cur.close()
         conn.close()
+        # Optionally log e here for debugging
         return jsonify({"error": "Failed to create account."}), 500
     cur.close()
     conn.close()
