@@ -163,16 +163,12 @@ async function setUserPin() {
 
   if (res.ok) {
     alert("✅ Account created successfully!");
-
-    // ✅ Mark user as logged in
     localStorage.setItem("isLoggedIn", "true");
-
-    // ✅ Show dashboard
     showDashboard();
   } else {
     alert("❌ " + data.error);
   }
-} // ✅ This was the missing closing brace
+}
 
 async function verifyLoginPin() {
   const email = localStorage.getItem("loginEmail");
