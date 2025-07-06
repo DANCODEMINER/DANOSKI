@@ -163,7 +163,7 @@ async function setUserPin() {
       pinMsg.style.color = "green";
       pinMsg.innerText = "✅ Account created successfully!";
       setTimeout(() => {
-        showForm("login");
+       showForm("admin-dashboard"); // or whatever ID you used for the admin dashboard section
         pinMsg.innerText = "";
       }, 2000);
     } else {
