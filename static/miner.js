@@ -298,88 +298,51 @@ document.addEventListener("DOMContentLoaded", () => {
     alert('Forgot password functionality to be implemented');
   });
 
-  // Handle PIN input and match checking
-  const allPinInputs = document.querySelectorAll(".pin-input");
+  // === PIN Input Auto-Focus and 4-digit Enabler ===
+function bindPinInputs() {
+  const inputs = ["pin1", "pin2", "pin3", "pin4"];
+  const btn = document.getElementById("create-account-btn");
 
-  allPinInputs.forEach((input, index) => {
+  inputs.forEach((id, index) => {
+    const input = document.getElementById(id);
+    if (!input) return;
+
     input.addEventListener("input", () => {
       input.value = input.value.replace(/[^0-9]/g, "");
 
-      if (input.value.length === 1 && index < allPinInputs.length - 1) {
-        allPinInputs[index + 1].focus();
+      // Autofocus next
+      if (input.value.length === 1 && index < inputs.length - 1) {
+        const next = document.getElementById(inputs[index + 1]);
+        if (next) next.focus();
       }
 
-      function bindPinInputs() {
-  const inputs = ["pin1", "pin2", "pin3", "pin4"];
+      checkPinLength();
+    });
 
-  inputs.forEach((id, index) => {
-    const input = document.getElementById(id);
-    if (input) {
-      input.addEventListener("input", () => {
-        input.value = input.value.replace(/[^0-9]/g, "");
-
-        // Autofocus next
-        if (input.value.length === 1 && index < inputs.length - 1) {
-          const next = document.getElementById(inputs[index + 1]);
-          if (next) next.focus();
-        }
-
-        checkPinLength();
-      });
-
-      input.addEventListener("keydown", (e) => {
-        if (e.key === "Backspace" && input.value === "" && index > 0) {
-          const prev = document.getElementById(inputs[index - 1]);
-          if (prev) prev.focus();
-        }
-      });
-    }
-  });
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Backspace" && input.value === "" && index > 0) {
+        const prev = document.getElementById(inputs[index - 1]);
+        if (prev) prev.focus();
       }
-
-                           function bindPinInputs() {
-  const inputs = ["pin1", "pin2", "pin3", "pin4"];
-
-  inputs.forEach((id, index) => {
-    const input = document.getElementById(id);
-    if (input) {
-      input.addEventListener("input", () => {
-        input.value = input.value.replace(/[^0-9]/g, "");
-
-        // Autofocus next
-        if (input.value.length === 1 && index < inputs.length - 1) {
-          const next = document.getElementById(inputs[index + 1]);
-          if (next) next.focus();
-        }
-
-        checkPinLength();
-      });
-
-      input.addEventListener("keydown", (e) => {
-        if (e.key === "Backspace" && input.value === "" && index > 0) {
-          const prev = document.getElementById(inputs[index - 1]);
-          if (prev) prev.focus();
-        }
-      });
-    }
+    });
   });
-}
 
-function checkPinLength() {
-  const pin = document.getElementById("pin1").value +
-              document.getElementById("pin2").value +
-              document.getElementById("pin3").value +
-              document.getElementById("pin4").value;
+  function checkPinLength() {
+    const pin = document.getElementById("pin1").value +
+                document.getElementById("pin2").value +
+                document.getElementById("pin3").value +
+                document.getElementById("pin4").value;
 
-  const btn = document.getElementById("create-account-btn");
-
-  if (pin.length === 4) {
-    btn.disabled = false;
-    btn.style.opacity = "1";
-    btn.style.cursor = "pointer";
-  } else {
-    btn.disabled = true;
-    btn.style.opacity = "0.5";
-    btn.style.cursor = "not-allowed";
+    if (btn) {
+      if (pin.length === 4) {
+        btn.disabled = false;
+        btn.style.opacity = "1";
+        btn.style.cursor = "pointer";
+      } else {
+        btn.disabled = true;
+        btn.style.opacity = "0.5";
+        btn.style.cursor = "not-allowed";
+      }
+    }
   }
 }
