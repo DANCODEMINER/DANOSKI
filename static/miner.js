@@ -250,75 +250,61 @@ setInterval(() => {
 
 // Attach form submit event listeners for future backend integration
 document.addEventListener("DOMContentLoaded", () => {
-  // If already logged in, show dashboard
+  // ✅ If already logged in, show dashboard
   if (localStorage.getItem("isLoggedIn") === "true") {
     showDashboard();
   }
 
-  // Handle login form submission
+  // ✅ Handle login form submission
   document.getElementById('login-form').addEventListener('submit', function(e) {
     e.preventDefault();
     loginSuccess(); // Replace with actual login logic
   });
 
-  // Handle forgot password form submission
+  // ✅ Handle forgot password form submission
   document.getElementById('forgot-form').addEventListener('submit', function(e) {
     e.preventDefault();
     alert('Forgot password functionality to be implemented');
   });
 
-  // Handle PIN input and match checking
-  const allPinInputs = document.querySelectorAll(".pin-input");
-
-  allPinInputs.forEach((input, index) => {
-    input.addEventListener("input", () => {
-      input.value = input.value.replace(/[^0-9]/g, "");
-
-      if (input.value.length === 1 && index < allPinInputs.length - 1) {
-        allPinInputs[index + 1].focus();
-      }
-
-      checkPinMatch();
-    });
-
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "Backspace" && input.value === "" && index > 0) {
-        allPinInputs[index - 1].focus();
-      }
-    });
-  });
+  // ✅ Attach PIN inputs
+  bindPinInputs(); // 👈 THIS is now your main handler
 });
 
-// Ensure dashboard loads on reload if already logged in
-document.addEventListener("DOMContentLoaded", () => {
-  if (localStorage.getItem("isLoggedIn") === "true") {
-    showDashboard();
-  }
-});
+// ✅ PIN input auto-focus, match checking, and button activation
+function bindPinInputs() {
+  const inputs = [
+    "pin1", "pin2", "pin3", "pin4",
+    "conf1", "conf2", "conf3", "conf4"
+  ];
 
-function attachPinListeners() {
-  const allPinInputs = document.querySelectorAll(".pin-input");
+  inputs.forEach(id => {
+    const input = document.getElementById(id);
+    if (input) {
+      input.addEventListener("input", () => {
+        input.value = input.value.replace(/[^0-9]/g, "");
+        checkPinMatch();
+        const index = inputs.indexOf(id);
+        if (input.value.length === 1 && index < inputs.length - 1) {
+          const nextInput = document.getElementById(inputs[index + 1]);
+          if (nextInput) nextInput.focus();
+        }
+      });
 
-  allPinInputs.forEach((input, index) => {
-    input.addEventListener("input", () => {
-      input.value = input.value.replace(/[^0-9]/g, "");
-
-      if (input.value.length === 1 && index < allPinInputs.length - 1) {
-        allPinInputs[index + 1].focus();
-      }
-
-      checkPinMatch(); // 👈 Ensure this triggers
-    });
-
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "Backspace" && input.value === "" && index > 0) {
-        allPinInputs[index - 1].focus();
-      }
-    });
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Backspace" && input.value === "") {
+          const index = inputs.indexOf(id);
+          if (index > 0) {
+            const prevInput = document.getElementById(inputs[index - 1]);
+            if (prevInput) prevInput.focus();
+          }
+        }
+      });
+    }
   });
 }
 
-// === LIVE PIN MATCH CHECK ===
+// ✅ Live check for PIN match
 function checkPinMatch() {
   const pin = document.getElementById("pin1").value +
               document.getElementById("pin2").value +
@@ -355,20 +341,9 @@ function checkPinMatch() {
   }
 }
 
-// === BIND EVENT LISTENERS TO PIN FIELDS ===
-function bindPinInputs() {
-  const inputs = [
-    "pin1", "pin2", "pin3", "pin4",
-    "conf1", "conf2", "conf3", "conf4"
-  ];
-
-  inputs.forEach(id => {
-    const input = document.getElementById(id);
-    if (input) {
-      input.addEventListener("input", () => {
-        input.value = input.value.replace(/[^0-9]/g, "");
-        checkPinMatch();
-      });
-    }
-  });
-}
+// ✅ Optional: Ensure dashboard loads on reload if logged in
+document.addEventListener("DOMContentLoaded", () => {
+  if (localStorage.getItem("isLoggedIn") === "true") {
+    showDashboard();
+  }
+});
