@@ -152,8 +152,9 @@ async function setUserPin() {
   const data = await res.json();
 
   if (res.ok) {
-    alert("✅ Account created successfully!");
-    showForm("login");
+  alert("✅ Account created successfully!");
+  showDashboard(); // 👈 This line
+  }
   } else {
     alert("❌ " + data.error);
   }
