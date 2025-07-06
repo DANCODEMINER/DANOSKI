@@ -80,6 +80,12 @@ async function verifyOtp() {
     otpMsg.innerText = "⚠️ Failed to connect to server.";
     console.error(err);
   }
+
+  // Clear OTP input and hide message after 5 seconds
+  document.getElementById("otp-code").value = "";
+  setTimeout(() => {
+    otpMsg.innerText = "";
+  }, 5000);
 }
 
 async function setUserPin() {
