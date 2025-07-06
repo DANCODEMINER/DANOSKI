@@ -195,21 +195,13 @@ async function verifyLoginPin() {
 }
 
 
-function showForm(formId) {
-  const allForms = [
-    "login-form",
-    "register-form",
-    "forgot-form",
-    "otp-form",
-    "pin-form",
-    "pin-verify-form"
-  ];
-
-  allForms.forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) return; // skip if element not found
-    el.style.display = (id === formId) ? "block" : "none";
-  });
+function showForm(formType) {
+  document.getElementById("login-form").style.display = formType === "login" ? "block" : "none";
+  document.getElementById("register-form").style.display = formType === "register" ? "block" : "none";
+  document.getElementById("forgot-form").style.display = formType === "forgot" ? "block" : "none";
+  document.getElementById("otp-form").style.display = formType === "otp" ? "block" : "none";  // added otp here
+  document.getElementById("pin-form").style.display = formType === "pin" ? "block" : "none";  // add pin if you want
+  document.getElementById("pin-verify-form").style.display = formType === "pin-verify" ? "block" : "none";
 }
 
 // On login success, switch to dashboard
