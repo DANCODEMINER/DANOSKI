@@ -313,20 +313,77 @@ document.addEventListener("DOMContentLoaded", () => {
         allPinInputs[index + 1].focus();
       }
 
-      checkPinMatch();
-    });
+      function bindPinInputs() {
+  const inputs = ["pin1", "pin2", "pin3", "pin4"];
 
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "Backspace" && input.value === "" && index > 0) {
-        allPinInputs[index - 1].focus();
-      }
-    });
+  inputs.forEach((id, index) => {
+    const input = document.getElementById(id);
+    if (input) {
+      input.addEventListener("input", () => {
+        input.value = input.value.replace(/[^0-9]/g, "");
+
+        // Autofocus next
+        if (input.value.length === 1 && index < inputs.length - 1) {
+          const next = document.getElementById(inputs[index + 1]);
+          if (next) next.focus();
+        }
+
+        checkPinLength();
+      });
+
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Backspace" && input.value === "" && index > 0) {
+          const prev = document.getElementById(inputs[index - 1]);
+          if (prev) prev.focus();
+        }
+      });
+    }
   });
-});
+      }
 
-// Ensure dashboard loads on reload if already logged in
-document.addEventListener("DOMContentLoaded", () => {
-  if (localStorage.getItem("isLoggedIn") === "true") {
-    showDashboard();
+                           function bindPinInputs() {
+  const inputs = ["pin1", "pin2", "pin3", "pin4"];
+
+  inputs.forEach((id, index) => {
+    const input = document.getElementById(id);
+    if (input) {
+      input.addEventListener("input", () => {
+        input.value = input.value.replace(/[^0-9]/g, "");
+
+        // Autofocus next
+        if (input.value.length === 1 && index < inputs.length - 1) {
+          const next = document.getElementById(inputs[index + 1]);
+          if (next) next.focus();
+        }
+
+        checkPinLength();
+      });
+
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Backspace" && input.value === "" && index > 0) {
+          const prev = document.getElementById(inputs[index - 1]);
+          if (prev) prev.focus();
+        }
+      });
+    }
+  });
+}
+
+function checkPinLength() {
+  const pin = document.getElementById("pin1").value +
+              document.getElementById("pin2").value +
+              document.getElementById("pin3").value +
+              document.getElementById("pin4").value;
+
+  const btn = document.getElementById("create-account-btn");
+
+  if (pin.length === 4) {
+    btn.disabled = false;
+    btn.style.opacity = "1";
+    btn.style.cursor = "pointer";
+  } else {
+    btn.disabled = true;
+    btn.style.opacity = "0.5";
+    btn.style.cursor = "not-allowed";
   }
-});
+}
