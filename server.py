@@ -309,21 +309,35 @@ def user_login():
 
         if user:
             stored_pw = user[1]
+
+            print(f"DEBUG: Stored password hash for user {user[0]}: {stored_pw!r}")
+
+            if not stored_pw:
+                print(f"ERROR: Stored password is empty or None for user {user[0]}")
+                return jsonify({"error": "Invalid credentials."}), 401
+
             if isinstance(stored_pw, str):
                 stored_pw = stored_pw.encode()
 
-            if bcrypt.checkpw(password.encode(), stored_pw):
-                log_user_action(user[0], "User logged in")
-                return jsonify({"message": "Login successful."})
-            else:
-                log_user_action(user[0], "Failed login attempt")
+            try:
+                if bcrypt.checkpw(password.encode(), stored_pw):
+                    log_user_action(user[0], "User logged in")
+                    return jsonify({"message": "Login successful."})
+                else:
+                    log_user_action(user[0], "Failed login attempt")
+                    return jsonify({"error": "Invalid credentials."}), 401
+            except ValueError as ve:
+                print(f"bcrypt ValueError for user {user[0]}: {ve}")
+                return jsonify({"error": "Server error: Invalid password hash."}), 500
+            except Exception as ex:
+                print(f"Unexpected bcrypt error for user {user[0]}: {ex}")
+                return jsonify({"error": "Server error during login."}), 500
 
         return jsonify({"error": "Invalid credentials."}), 401
 
     except Exception as e:
         print("Login error:", str(e))  # Show in server log
         return jsonify({"error": "Server error during login."}), 500
-
 
 @app.route("/user/verify-login-pin", methods=["POST"])
 def verify_login_pin():
