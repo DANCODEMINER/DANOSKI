@@ -34,7 +34,7 @@ async function signupUser() {
     if (res.ok) {
       otpMsg.style.color = "green";
       otpMsg.innerText = "✅ OTP sent to your email.";
-      showForm("otp");  // make sure your showForm uses "otp" string here for otp-form
+      showForm("otp-form");  // make sure your showForm uses "otp" string here for otp-form
       otpMsg.scrollIntoView({ behavior: "smooth", block: "center" });
     } else {
       otpMsg.style.color = "red";
