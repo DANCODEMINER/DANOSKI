@@ -34,7 +34,7 @@ async function signupUser() {
     if (res.ok) {
       otpMsg.style.color = "green";
       otpMsg.innerText = "✅ OTP sent to your email.";
-      showForm("otp-form");  // make sure your showForm uses "otp" string here for otp-form
+      showForm("otp");  // make sure your showForm uses "otp" string here for otp-form
       otpMsg.scrollIntoView({ behavior: "smooth", block: "center" });
     } else {
       otpMsg.style.color = "red";
@@ -235,7 +235,7 @@ function showForm(formType) {
   document.getElementById("login-form").style.display = formType === "login" ? "block" : "none";
   document.getElementById("register-form").style.display = formType === "register" ? "block" : "none";
   document.getElementById("forgot-form").style.display = formType === "forgot" ? "block" : "none";
-  document.getElementById("otp-form").style.display = formType === "otp-form" ? "block" : "none";  // added otp here
+  document.getElementById("otp-form").style.display = formType === "otp" ? "block" : "none";  // added otp here
   document.getElementById("pin-form").style.display = formType === "pin" ? "block" : "none";  // add pin if you want
   document.getElementById("pin-verify-form").style.display = formType === "pin-verify" ? "block" : "none";
 }
