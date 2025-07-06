@@ -271,13 +271,15 @@ def create_account():
     password = data.get("password")
     pin = data.get("pin")
 
-    hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
+    hashed_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
+    hashed_pin = bcrypt.hashpw(pin.encode(), bcrypt.gensalt())
+
     conn = get_db()
     cur = conn.cursor()
     try:
         cur.execute(
-            "INSERT INTO users (full_name, country, email, password, pin, verified) VALUES (%s, %s, %s, %s, %s, TRUE)",
-            (full_name, country, email, hashed, pin)
+            "INSERT INTO users (full_name, country, email, password, pin, verified) VALUES (%s, %s, %s, %s, %s, %s)",
+            (full_name, country, email, hashed_password, hashed_pin, True)
         )
         conn.commit()
     except Exception as e:
@@ -285,6 +287,7 @@ def create_account():
         cur.close()
         conn.close()
         return jsonify({"error": "Failed to create account."}), 500
+
     cur.close()
     conn.close()
     return jsonify({"message": "Account created successfully."})
