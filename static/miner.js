@@ -119,6 +119,49 @@ function loginUser() {
   });
 }
 
+function verifyLoginPin() {
+  const pin = document.getElementById("verify-pin1").value +
+              document.getElementById("verify-pin2").value +
+              document.getElementById("verify-pin3").value +
+              document.getElementById("verify-pin4").value;
+
+  const email = localStorage.getItem("loginEmail");
+  const pinMsg = document.getElementById("pin-verify-message");
+
+  if (pin.length !== 4) {
+    pinMsg.innerText = "❌ Please enter your 4-digit PIN.";
+    pinMsg.style.color = "red";
+    return;
+  }
+
+  fetch("https://danoski-backend.onrender.com/user/verify-login-pin", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, pin })
+  })
+  .then(res => res.json().then(data => ({ ok: res.ok, data })))
+  .then(({ ok, data }) => {
+    if (ok) {
+      pinMsg.innerText = "✅ PIN verified. Logging in...";
+      pinMsg.style.color = "green";
+      localStorage.setItem("isLoggedIn", "true");
+      showDashboard();
+    } else {
+      pinMsg.innerText = "❌ " + (data.error || "PIN verification failed.");
+      pinMsg.style.color = "red";
+    }
+  })
+  .catch(err => {
+    pinMsg.innerText = "⚠️ Server error.";
+    pinMsg.style.color = "orange";
+    console.error(err);
+  });
+
+  setTimeout(() => {
+    pinMsg.innerText = "";
+  }, 4000);
+}
+
 function setUserPin() {
   const pin = document.getElementById("pin1").value +
               document.getElementById("pin2").value +
