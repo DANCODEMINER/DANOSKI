@@ -35,19 +35,22 @@
 
 <!-- LOGIN PIN VERIFY FORM -->
 <form id="pin-verify-form" style="display: none;" onsubmit="event.preventDefault(); verifyLoginPin();">
-  <h2>Enter Your PIN</h2>
-  <div style="display: flex; justify-content: center; gap: 10px;">
-    <input type="text" class="pin-input" id="pin1" maxlength="1" />
-    <input type="text" class="pin-input" id="pin2" maxlength="1" />
-    <input type="text" class="pin-input" id="pin3" maxlength="1" />
-    <input type="text" class="pin-input" id="pin4" maxlength="1" />
+  <h2>Verify PIN</h2>
+  <p id="pin-message" style="color: green; text-align: center; margin-bottom: 10px;"></p>
+  <input class="pin-input" id="pin1" maxlength="1" required />
+  <input class="pin-input" id="pin2" maxlength="1" required />
+  <input class="pin-input" id="pin3" maxlength="1" required />
+  <input class="pin-input" id="pin4" maxlength="1" required />
+  <button class="btn" type="submit">VERIFY PIN</button>
+  <div class="form-links">
+    <a href="#" onclick="showForm('login')">Back to Login</a>
   </div>
-  <button class="btn" type="submit" style="margin-top: 20px;">Verify PIN</button>
 </form>
 
 <!-- REGISTER FORM (NO PIN HERE) -->
 <form id="register-form" style="display: none;" onsubmit="event.preventDefault(); signupUser();">
   <h2>Create Account</h2>
+  <p id="signup-message" style="color: green; text-align: center; margin-bottom: 10px;"></p>
   <input type="text" id="signup-name" placeholder="Full Name" required />
   <input type="text" id="signup-country" placeholder="Country" required />
   <input type="email" id="signup-email" placeholder="Email" required />
