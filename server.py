@@ -293,30 +293,37 @@ def create_account():
     return jsonify({"message": "Account created successfully."})
 
 # === USER LOGIN ===
-
 @app.route("/user/login", methods=["POST"])
 def user_login():
-    data = request.json
-    email = data.get("email")
-    password = data.get("password")
+    try:
+        data = request.json
+        email = data.get("email")
+        password = data.get("password")
 
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("SELECT id, password FROM users WHERE email = %s", (email,))
-    user = cur.fetchone()
-    cur.close()
-    conn.close()
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("SELECT id, password FROM users WHERE email = %s", (email,))
+        user = cur.fetchone()
+        cur.close()
+        conn.close()
 
-    if user and bcrypt.checkpw(password.encode(), user[1].encode()):
-        user_id = user[0]
-        log_user_action(user_id, "User logged in")
-        return jsonify({"message": "Login successful."})
+        if user:
+            stored_pw = user[1]
+            if isinstance(stored_pw, str):
+                stored_pw = stored_pw.encode()
 
-    # Log failed login if user exists
-    if user:
-        log_user_action(user[0], "Failed login attempt")
+            if bcrypt.checkpw(password.encode(), stored_pw):
+                log_user_action(user[0], "User logged in")
+                return jsonify({"message": "Login successful."})
+            else:
+                log_user_action(user[0], "Failed login attempt")
 
-    return jsonify({"error": "Invalid credentials."}), 401
+        return jsonify({"error": "Invalid credentials."}), 401
+
+    except Exception as e:
+        print("Login error:", str(e))  # Show in server log
+        return jsonify({"error": "Server error during login."}), 500
+
 
 @app.route("/user/verify-login-pin", methods=["POST"])
 def verify_login_pin():
