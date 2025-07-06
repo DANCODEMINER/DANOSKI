@@ -1,11 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html><html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Adchain Miner - Auth</title>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
-
   <link rel="stylesheet" href="/static/miner.css" />
 </head>
 <body>
@@ -19,115 +17,114 @@
       <a href="#" onclick="showForm('register')">👤 Register</a>
       <a href="#" onclick="showForm('forgot')">🔒 Forgot Password</a>
     </div>
-    <div class="form-container">
+    <div class="form-container"><!-- LOGIN FORM -->
+  <section id="login-section">
+    <form id="login-form" onsubmit="event.preventDefault(); loginUser();">
+      <h2>Login to Dashboard</h2>
+      <input type="email" id="login-email" placeholder="Email" required />
+      <input type="password" id="login-password" placeholder="Password" required />
+      <button class="btn" type="submit">LOG IN</button>
+      <div class="form-links">
+        <a href="#" onclick="showForm('register')">Create Account</a>
+        <a href="#" onclick="showForm('forgot')">Forgot Password?</a>
+      </div>
+    </form>
+  </section>
 
-      <!-- LOGIN FORM -->
-<form id="login-form" onsubmit="event.preventDefault(); loginUser();">
-  <h2>Login to Dashboard</h2>
-  <input type="email" id="login-email" placeholder="Email" required />
-  <input type="password" id="login-password" placeholder="Password" required />
-  <button class="btn" type="submit">LOG IN</button>
-  <div class="form-links">
-    <a href="#" onclick="showForm('register')">Create Account</a>
-    <a href="#" onclick="showForm('forgot')">Forgot Password?</a>
-  </div>
-</form>
+  <!-- LOGIN PIN VERIFY FORM -->
+  <section id="login-pin-section">
+    <form id="pin-verify-form" style="display: none;" onsubmit="event.preventDefault(); verifyLoginPin();">
+      <h2>Verify PIN</h2>
+      <p id="pin-message" style="color: green; text-align: center; margin-bottom: 10px;"></p>
+      <div class="pin-row" style="display: flex; justify-content: center; gap: 10px;">
+        <input class="pin-input" id="pin1" maxlength="1" required />
+        <input class="pin-input" id="pin2" maxlength="1" required />
+        <input class="pin-input" id="pin3" maxlength="1" required />
+        <input class="pin-input" id="pin4" maxlength="1" required />
+      </div>
+      <button class="btn" type="submit">VERIFY PIN</button>
+      <div class="form-links">
+        <a href="#" onclick="showForm('login')">Back to Login</a>
+      </div>
+    </form>
+  </section>
 
-<!-- LOGIN PIN VERIFY FORM -->
-<form id="pin-verify-form" style="display: none;" onsubmit="event.preventDefault(); verifyLoginPin();">
-  <h2>Verify PIN</h2>
-  <p id="pin-message" style="color: green; text-align: center; margin-bottom: 10px;"></p>
-  <input class="pin-input" id="pin1" maxlength="1" required />
-  <input class="pin-input" id="pin2" maxlength="1" required />
-  <input class="pin-input" id="pin3" maxlength="1" required />
-  <input class="pin-input" id="pin4" maxlength="1" required />
-  <button class="btn" type="submit">VERIFY PIN</button>
-  <div class="form-links">
-    <a href="#" onclick="showForm('login')">Back to Login</a>
-  </div>
-</form>
+  <!-- REGISTER FORM -->
+  <section id="register-section">
+    <form id="register-form" style="display: none;" onsubmit="event.preventDefault(); signupUser();">
+      <h2>Create Account</h2>
+      <p id="signup-message" style="color: green; text-align: center; margin-bottom: 10px;"></p>
+      <input type="text" id="signup-name" placeholder="Full Name" required />
+      <input type="text" id="signup-country" placeholder="Country" required />
+      <input type="email" id="signup-email" placeholder="Email" required />
+      <input type="password" id="signup-password" placeholder="Password" required />
+      <button class="btn" type="submit">SIGN UP</button>
+      <div class="form-links">
+        <a href="#" onclick="showForm('login')">Back to Login</a>
+      </div>
+    </form>
+  </section>
 
-<!-- REGISTER FORM (NO PIN HERE) -->
-<form id="register-form" style="display: none;" onsubmit="event.preventDefault(); signupUser();">
-  <h2>Create Account</h2>
-  <p id="signup-message" style="color: green; text-align: center; margin-bottom: 10px;"></p>
-  <input type="text" id="signup-name" placeholder="Full Name" required />
-  <input type="text" id="signup-country" placeholder="Country" required />
-  <input type="email" id="signup-email" placeholder="Email" required />
-  <input type="password" id="signup-password" placeholder="Password" required />
-  <button class="btn" type="submit">SIGN UP</button>
-  <div class="form-links">
-    <a href="#" onclick="showForm('login')">Back to Login</a>
-  </div>
-</form>
+  <!-- OTP FORM -->
+  <section id="otp-section">
+    <form id="otp-form" onsubmit="event.preventDefault(); verifyOtp();" style="display: none;">
+      <h2>Verify OTP</h2>
+      <p id="otp-message" style="color: green; text-align: center;"></p>
+      <input type="email" id="otp-email" style="display:none;" />
+      <input type="text" id="otp-code" placeholder="Enter OTP" required />
+      <button class="btn" type="submit">VERIFY</button>
+      <div class="form-links">
+        <a href="#" onclick="showForm('login')">Back to Login</a>
+      </div>
+    </form>
+  </section>
 
-<!-- OTP FORM -->
-<form id="otp-form" onsubmit="event.preventDefault(); verifyOtp();" style="display: none;">
-  <h2>Verify OTP</h2>
-  <p id="otp-message" style="color: green; text-align: center;"></p>
-  <input type="email" id="otp-email" style="display:none;" />
-  <input type="text" id="otp-code" placeholder="Enter OTP" required />
-  <button class="btn" type="submit">VERIFY</button>
-  <div class="form-links">
-    <a href="#" onclick="showForm('login')">Back to Login</a>
-  </div>
-</form>
+  <!-- CREATE PIN FORM -->
+  <section id="pin-section" style="max-width: 400px; margin: 0 auto; padding: 20px;">
+    <form id="pin-form" style="display: none;">
+      <h2 style="text-align: center; margin-bottom: 20px;">Create PIN</h2>
+      <div class="pin-row" style="display: flex; justify-content: center; gap: 10px;">
+        <input type="password" id="pin1" maxlength="1" class="pin-input" />
+        <input type="password" id="pin2" maxlength="1" class="pin-input" />
+        <input type="password" id="pin3" maxlength="1" class="pin-input" />
+        <input type="password" id="pin4" maxlength="1" class="pin-input" />
+      </div>
+      <p id="pin-message" style="color: red; text-align: center; margin-top: 15px;"></p>
+      <div style="text-align: center; margin-top: 20px;">
+        <button id="create-account-btn" type="button" onclick="setUserPin()" style="padding: 10px 20px; font-size: 16px; cursor: pointer;">
+          Create Account
+        </button>
+      </div>
+    </form>
+  </section>
 
-<section id="pin-section" style="max-width: 400px; margin: 0 auto; padding: 20px;">
-  <form id="pin-form" style="display: none;">
-    <h2 style="text-align: center; margin-bottom: 20px;">Create PIN</h2>
+  <!-- FORGOT PASSWORD FORM -->
+  <section id="forgot-section">
+    <form id="forgot-form" style="display: none;" onsubmit="event.preventDefault(); resetPin();">
+      <h2>Reset PIN</h2>
+      <input type="email" id="forgot-email" placeholder="Email" required />
+      <input type="text" id="forgot-otp" placeholder="Enter OTP" required />
+      <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 1rem;">
+        <input type="text" maxlength="1" class="pin-input" id="new1" required />
+        <input type="text" maxlength="1" class="pin-input" id="new2" required />
+        <input type="text" maxlength="1" class="pin-input" id="new3" required />
+        <input type="text" maxlength="1" class="pin-input" id="new4" required />
+      </div>
+      <button class="btn" type="submit">RESET</button>
+      <div class="form-links">
+        <a href="#" onclick="showForm('login')">Back to Login</a>
+      </div>
+    </form>
+  </section>
 
-    <!-- PIN Inputs Row -->
-    <div class="pin-row" style="display: flex; justify-content: center; gap: 10px;">
-      <input type="password" id="pin1" maxlength="1" class="pin-input" />
-      <input type="password" id="pin2" maxlength="1" class="pin-input" />
-      <input type="password" id="pin3" maxlength="1" class="pin-input" />
-      <input type="password" id="pin4" maxlength="1" class="pin-input" />
-    </div>
+</div> <!-- end form-container -->
 
-    <!-- Error Message -->
-    <p id="pin-message" style="color: red; text-align: center; margin-top: 15px;"></p>
-
-    <!-- Create Account Button -->
-    <div style="text-align: center; margin-top: 20px;">
-      <button
-        id="create-account-btn"
-        type="button"
-        onclick="setUserPin()"
-        style="padding: 10px 20px; font-size: 16px; cursor: pointer;"
-      >
-        Create Account
-      </button>
-    </div>
-  </form>
-</section>
-      
-<!-- FORGOT PASSWORD / RESET PIN FORM -->
-<form id="forgot-form" style="display: none;" onsubmit="event.preventDefault(); resetPin();">
-  <h2>Reset PIN</h2>
-  <input type="email" id="forgot-email" placeholder="Email" required />
-  <input type="text" id="forgot-otp" placeholder="Enter OTP" required />
-  <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 1rem;">
-    <input type="text" maxlength="1" class="pin-input" id="new1" required />
-    <input type="text" maxlength="1" class="pin-input" id="new2" required />
-    <input type="text" maxlength="1" class="pin-input" id="new3" required />
-    <input type="text" maxlength="1" class="pin-input" id="new4" required />
-  </div>
-  <button class="btn" type="submit">RESET</button>
-  <div class="form-links">
-    <a href="#" onclick="showForm('login')">Back to Login</a>
-  </div>
-</form>
-    </div>
-
-    <div>
-  <div id="dashboard-page" style="display: none;">
+  </div> <!-- end login-page -->  <!-- DASHBOARD PAGE -->  <div id="dashboard-page" style="display: none;">
     <div id="overlay" onclick="toggleSidebar()"></div>
     <header>
       <h1>Adchain Miner</h1>
       <button class="menu-btn" onclick="toggleSidebar()">☰</button>
     </header>
-
     <div class="sidebar" id="sidebar">
       <h3>Settings</h3>
       <ul>
@@ -140,32 +137,27 @@
         <li onclick="toggleSidebar()">❌ Close Menu</li>
       </ul>
     </div>
-
     <div class="container">
       <div class="mining-counter">
         <h2>Mining in Progress...</h2>
         <p id="btc-counter">0.00000000 BTC</p>
       </div>
-
       <div class="stats">
         <div class="card"><h2>Total Hashrate</h2><p>1.23 Th/s</p></div>
         <div class="card"><h2>Total Mined</h2><p>0.0054 BTC</p></div>
         <div class="card"><h2>Total Withdrawn</h2><p>0.0012 BTC</p></div>
         <div class="card"><h2>Active Sessions</h2><p>3</p></div>
       </div>
-
       <div class="actions">
         <button>▶️ Watch Ad</button>
         <button>⬇️ Withdraw</button>
       </div>
-
       <div class="logs">
         <h3>💸 Next Withdrawal Date</h3>
         <div id="withdrawal-date-message" style="color: #444; font-size: 15px;">
           <p>Next auto-withdrawal will be processed on <strong>July 10, 2025</strong>.</p>
         </div>
       </div>
-
       <div class="logs">
         <h3>📢 Messages & Announcements</h3>
         <div id="dashboard-messages" style="text-align: left; color: #444; font-size: 15px;">
@@ -173,7 +165,6 @@
           <p>⚠️ Withdrawals are processed every 24 hours. Make sure your wallet is active.</p>
         </div>
       </div>
-
       <div class="logs">
         <h3>Recent Hash Sessions</h3>
         <table>
@@ -186,7 +177,6 @@
           </tbody>
         </table>
       </div>
-
       <div class="logs">
         <h3>📈 Leaderboard</h3>
         <h4 style="color: #f7931a;">🏆 Top Miners</h4>
@@ -207,7 +197,6 @@
             <tr><td>10</td><td>Judy</td><td>0.061 BTC</td><td>0.85 Th/s</td></tr>
           </tbody>
         </table>
-
         <h4 style="margin-top: 30px; color: #f7931a;">📊 My Rank</h4>
         <table>
           <thead>
@@ -219,7 +208,6 @@
         </table>
       </div>
     </div>
-
     <footer>
       <div>&copy; 2025 Adchain Miner. All rights reserved.</div>
       <div class="logout-footer">
@@ -227,7 +215,6 @@
       </div>
     </footer>
   </div>
-
   <script src="static/miner.js"></script>
 </body>
-            </html>
+</html>
