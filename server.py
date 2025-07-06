@@ -552,14 +552,15 @@ def withdraw():
     cur.execute("UPDATE users SET withdrawn_btc = withdrawn_btc + %s, mined_btc = mined_btc - %s WHERE id = %s",
                 (amount, amount, user_id))
 
-    # Log withdrawal request
-log_user_action(user_id, f"Requested withdrawal of {amount} BTC to {wallet}")
+    # ✅ FIXED: Proper indentation here
+    log_user_action(user_id, f"Requested withdrawal of {amount} BTC to {wallet}")
 
     conn.commit()
     cur.close()
     conn.close()
 
     return jsonify({"message": f"Withdrawal {status}."})
+    
 
 @app.route("/admin/pending-withdrawals", methods=["GET"])
 def pending_withdrawals():
