@@ -248,30 +248,36 @@ setInterval(() => {
   }
 }, 1000);
 
-// Attach form submit event listeners for future backend integration
+// === DOMContentLoaded: Attach all handlers and load dashboard if logged in ===
 document.addEventListener("DOMContentLoaded", () => {
-  // ✅ If already logged in, show dashboard
+  // ✅ Show dashboard if already logged in
   if (localStorage.getItem("isLoggedIn") === "true") {
     showDashboard();
   }
 
-  // ✅ Handle login form submission
-  document.getElementById('login-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    loginSuccess(); // Replace with actual login logic
-  });
+  // ✅ Login form submit
+  const loginForm = document.getElementById('login-form');
+  if (loginForm) {
+    loginForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      loginSuccess(); // Replace with actual login logic
+    });
+  }
 
-  // ✅ Handle forgot password form submission
-  document.getElementById('forgot-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    alert('Forgot password functionality to be implemented');
-  });
+  // ✅ Forgot password form
+  const forgotForm = document.getElementById('forgot-form');
+  if (forgotForm) {
+    forgotForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      alert('Forgot password functionality to be implemented');
+    });
+  }
 
-  // ✅ Attach PIN inputs
-  bindPinInputs(); // 👈 This handles match/mismatch + auto focus
+  // ✅ Attach PIN input listeners
+  bindPinInputs();
 });
 
-// ✅ PIN input auto-focus, match checking, and button activation
+// === PIN Input Handler: auto-focus, backspace, and validation ===
 function bindPinInputs() {
   const inputs = [
     "pin1", "pin2", "pin3", "pin4",
@@ -305,8 +311,10 @@ function bindPinInputs() {
   });
 }
 
-// ✅ Live check for PIN match
+// === PIN Match Checker ===
 function checkPinMatch() {
+  console.log("✅ checkPinMatch called");
+
   const pin = document.getElementById("pin1").value +
               document.getElementById("pin2").value +
               document.getElementById("pin3").value +
@@ -319,6 +327,8 @@ function checkPinMatch() {
 
   const pinMsg = document.getElementById("pin-message");
   const btn = document.getElementById("create-account-btn");
+
+  if (!pinMsg || !btn) return; // ⛑ Safety check
 
   if (pin.length === 4 && confirm.length === 4) {
     if (pin === confirm) {
