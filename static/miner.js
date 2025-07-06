@@ -11,7 +11,7 @@ async function signupUser() {
   const country = document.getElementById("signup-country").value.trim();
   const email = document.getElementById("signup-email").value.trim();
   const password = document.getElementById("signup-password").value.trim();
-  const otpMsg = document.getElementById("otp-message"); // Reusing otp-message element for messages
+  const signupMsg = document.getElementById("otp-message"); // Reusing otp-message element for messages
 
   signupData = {
     full_name: fullName,
@@ -179,7 +179,7 @@ async function verifyLoginPin() {
     document.getElementById("pin2").value +
     document.getElementById("pin3").value +
     document.getElementById("pin4").value;
-  const otpMsg = document.getElementById("otp-message"); // You can create a similar message element for PIN form or reuse
+  const pinMsg = document.getElementById("otp-message"); // You can create a similar message element for PIN form or reuse
 
   if (pin.length !== 4) {
     otpMsg.style.color = "orange";
