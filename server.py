@@ -265,6 +265,7 @@ def verify_otp():
 @app.route("/user/create-account", methods=["POST"])
 def create_account():
     data = request.json or {}
+    print("Received data:", data)  # Debug: print received JSON payload
 
     full_name = data.get("full_name", "").strip()
     country = data.get("country", "").strip()
@@ -272,7 +273,7 @@ def create_account():
     password = data.get("password", "")
     pin = data.get("pin", "")
 
-    # Basic validation
+    # Basic validation for required fields
     if not all([full_name, country, email, password, pin]):
         return jsonify({"error": "All fields are required."}), 400
 
