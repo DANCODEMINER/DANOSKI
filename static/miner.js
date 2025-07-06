@@ -97,7 +97,39 @@ async function verifyOtp() {
 }
 
 async function loginUser() {
-  const email = document.getElementById("login-email").value.trim();
+  const email = document.getElementById("login-email").value.trim()async function setUserPin() {
+  const pin = document.getElementById("pin1").value +
+              document.getElementById("pin2").value +
+              document.getElementById("pin3").value +
+              document.getElementById("pin4").value;
+
+  const full_name = localStorage.getItem("name");
+  const country = localStorage.getItem("country");
+  const email = localStorage.getItem("email");
+  const password = localStorage.getItem("password");
+
+  const res = await fetch("https://danoski-backend.onrender.com/user/create-account", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      full_name,
+      country,
+      email,
+      password,
+      pin
+    })
+  });
+
+  const data = await res.json();
+
+  if (res.ok) {
+    alert("✅ Account created successfully!");
+    localStorage.setItem("isLoggedIn", "true");
+    showDashboard();
+  } else {
+    alert("❌ " + data.error);
+  }
+  };
   const password = document.getElementById("login-password").value.trim();
 
   const payload = { email, password };
@@ -124,76 +156,6 @@ async function loginUser() {
   }
 }
 
-async function setUserPin() {
-  const pin = document.getElementById("pin1").value +
-              document.getElementById("pin2").value +
-              document.getElementById("pin3").value +
-              document.getElementById("pin4").value;
-
-  const full_name = localStorage.getItem("name");
-  const country = localStorage.getItem("country");
-  const email = localStorage.getItem("email");
-  const password = localStorage.getItem("password");
-
-  const res = await fetch("https://danoski-backend.onrender.com/user/create-account", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ full_name, country, email, password, pin })
-  });
-
-  const data = await res.json();
-
-  if (res.ok) {
-    alert("✅ Account created successfully!");
-    localStorage.setItem("isLoggedIn", "true");
-    showDashboard();
-  } else {
-    alert("❌ " + data.error);
-  }
-}
-
-async function verifyLoginPin() {
-  const email = localStorage.getItem("loginEmail");
-  const pin = document.getElementById("pin1").value +
-              document.getElementById("pin2").value +
-              document.getElementById("pin3").value +
-              document.getElementById("pin4").value;
-  const pinMsg = document.getElementById("pin-message");
-
-  if (pin.length !== 4) {
-    pinMsg.style.color = "orange";
-    pinMsg.innerText = "⚠️ Please enter your 4-digit PIN.";
-    pinMsg.scrollIntoView({ behavior: "smooth", block: "center" });
-    setTimeout(() => { pinMsg.innerText = ""; }, 5000);
-    return;
-  }
-
-  try {
-    const res = await fetch("https://danoski-backend.onrender.com/user/verify-login-pin", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, pin })
-    });
-
-    const data = await res.json();
-
-    if (res.ok) {
-      alert("✅ " + data.message);
-      showDashboard();
-    } else {
-      pinMsg.style.color = "red";
-      pinMsg.innerText = "❌ " + (data.error || "Invalid PIN.");
-      pinMsg.scrollIntoView({ behavior: "smooth", block: "center" });
-      setTimeout(() => { pinMsg.innerText = ""; }, 5000);
-    }
-  } catch (err) {
-    pinMsg.style.color = "orange";
-    pinMsg.innerText = "⚠️ Failed to verify PIN.";
-    pinMsg.scrollIntoView({ behavior: "smooth", block: "center" });
-    setTimeout(() => { pinMsg.innerText = ""; }, 5000);
-    console.error(err);
-  }
-}
 
 // === PIN Input Activation ===
 function bindPinInputs() {
