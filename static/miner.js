@@ -273,7 +273,6 @@ function showDashboard() {
   document.getElementById("dashboard-page").style.display = "block";
 }
 
-// BTC counter animation on dashboard
 let btcValue = 0.00000000;
 setInterval(() => {
   const btcCounter = document.getElementById("btc-counter");
@@ -322,4 +321,11 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   });
+});
+
+// Ensure dashboard loads on reload if already logged in
+document.addEventListener("DOMContentLoaded", () => {
+  if (localStorage.getItem("isLoggedIn") === "true") {
+    showDashboard();
+  }
 });
