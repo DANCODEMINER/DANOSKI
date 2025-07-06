@@ -14,9 +14,7 @@ function showForm(formType) {
   document.getElementById("dashboard-page").style.display = formType === "dashboard" ? "block" : "none";
 }
 
-let signupData = {};
-
-async function signupUser() {
+function signupUser() {
   const fullName = document.getElementById("signup-name").value.trim();
   const country = document.getElementById("signup-country").value.trim();
   const email = document.getElementById("signup-email").value.trim();
@@ -30,16 +28,14 @@ async function signupUser() {
     password: password
   };
 
-  try {
-    const res = await fetch("https://danoski-backend.onrender.com/user/signup", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(signupData)
-    });
-
-    const data = await res.json();
-
-    if (res.ok) {
+  fetch("https://danoski-backend.onrender.com/user/signup", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(signupData)
+  })
+  .then(res => res.json().then(data => ({ ok: res.ok, data })))
+  .then(({ ok, data }) => {
+    if (ok) {
       localStorage.setItem("name", fullName);
       localStorage.setItem("country", country);
       localStorage.setItem("email", email);
@@ -55,33 +51,32 @@ async function signupUser() {
       otpMsg.innerText = "❌ " + (data.error || "Signup failed.");
       otpMsg.scrollIntoView({ behavior: "smooth", block: "center" });
     }
-  } catch (err) {
+
+    setTimeout(() => {
+      otpMsg.innerText = "";
+    }, 5000);
+  })
+  .catch(err => {
     otpMsg.style.color = "orange";
     otpMsg.innerText = "⚠️ Failed to connect to server.";
     otpMsg.scrollIntoView({ behavior: "smooth", block: "center" });
     console.error(err);
-  }
-
-  setTimeout(() => {
-    otpMsg.innerText = "";
-  }, 5000);
+  });
 }
 
-async function verifyOtp() {
+function verifyOtp() {
   const email = document.getElementById("otp-email").value.trim();
   const otp = document.getElementById("otp-code").value.trim();
   const otpMsg = document.getElementById("otp-message");
 
-  try {
-    const res = await fetch("https://danoski-backend.onrender.com/user/verify-otp", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, otp })
-    });
-
-    const data = await res.json();
-
-    if (res.ok) {
+  fetch("https://danoski-backend.onrender.com/user/verify-otp", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, otp })
+  })
+  .then(res => res.json().then(data => ({ ok: res.ok, data })))
+  .then(({ ok, data }) => {
+    if (ok) {
       otpMsg.style.color = "green";
       otpMsg.innerText = "✅ OTP verified! Set your PIN.";
       showForm("pin-form");
@@ -89,52 +84,39 @@ async function verifyOtp() {
       otpMsg.style.color = "red";
       otpMsg.innerText = "❌ " + (data.error || "Verification failed.");
     }
-  } catch (err) {
+  })
+  .catch(err => {
     otpMsg.style.color = "orange";
     otpMsg.innerText = "⚠️ Failed to connect to server.";
     console.error(err);
-  }
+  });
 }
 
-async function loginUser() {
+function loginUser() {
   const email = document.getElementById("login-email").value.trim();
   const password = document.getElementById("login-password").value.trim();
 
   const payload = { email, password };
 
-  try {
-    const res = await fetch("https://danoski-backend.onrender.com/user/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-
-    const data = await res.json();
-
-    if (res.ok) {
+  fetch("https://danoski-backend.onrender.com/user/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  })
+  .then(res => res.json().then(data => ({ ok: res.ok, data })))
+  .then(({ ok, data }) => {
+    if (ok) {
       localStorage.setItem("loginEmail", email);
       alert("✅ Login successful. Please verify your PIN.");
       showForm("pin-verify");
     } else {
       alert("❌ " + data.error);
     }
-  } catch (err) {
+  })
+  .catch(err => {
     alert("⚠️ Failed to connect to server.");
     console.error(err);
-  }
-}
-
-
-
-  const data = await res.json();
-
-  if (res.ok) {
-    alert("✅ Account created successfully!");
-    localStorage.setItem("isLoggedIn", "true");
-    showDashboard();
-  } else {
-    alert("❌ " + data.error);
-  }
+  });
 }
 
 function setUserPin() {
@@ -187,7 +169,7 @@ function bindPinInputs() {
           const next = document.getElementById(inputs[index + 1]);
           if (next) next.focus();
         }
-        checkPinLength(); // 👈 Trigger enable logic
+        checkPinLength();
       });
 
       input.addEventListener("keydown", (e) => {
@@ -268,5 +250,5 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  bindPinInputs(); // 👈 Enable PIN logic on page load
+  bindPinInputs();
 });
