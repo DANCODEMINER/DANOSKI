@@ -168,14 +168,21 @@ function verifyLoginPin() {
 }
 
 function setUserPin() {
-  const pin =
-    document.getElementById("pin1").value +
-    document.getElementById("pin2").value +
-    document.getElementById("pin3").value +
-    document.getElementById("pin4").value;
+  const pin1 = document.getElementById("pin1").value.trim();
+  const pin2 = document.getElementById("pin2").value.trim();
+  const pin3 = document.getElementById("pin3").value.trim();
+  const pin4 = document.getElementById("pin4").value.trim();
 
-  if (pin.length !== 4) {
-    alert("Please enter a 4-digit PIN.");
+  const pin = pin1 + pin2 + pin3 + pin4;
+
+  console.log("PIN1:", pin1);
+  console.log("PIN2:", pin2);
+  console.log("PIN3:", pin3);
+  console.log("PIN4:", pin4);
+  console.log("Combined PIN:", pin);
+
+  if (pin.length !== 4 || !/^\d{4}$/.test(pin)) {
+    alert("Please enter a valid 4-digit PIN.");
     return;
   }
 
@@ -184,8 +191,13 @@ function setUserPin() {
   const email = localStorage.getItem("email");
   const password = localStorage.getItem("password");
 
+  console.log("Full Name:", full_name);
+  console.log("Country:", country);
+  console.log("Email:", email);
+  console.log("Password:", password);
+
   if (!full_name || !country || !email || !password) {
-    alert("❌ Missing signup details. Please restart registration.");
+    alert("User details missing. Please restart registration.");
     return;
   }
 
@@ -197,23 +209,22 @@ function setUserPin() {
       country,
       email,
       password,
-      pin
-    })
+      pin,
+    }),
   })
-    .then(res => res.json().then(data => ({ ok: res.ok, data })))
+    .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
     .then(({ ok, data }) => {
       if (ok) {
         alert("✅ Account created successfully!");
         sessionStorage.setItem("isLoggedIn", "true");
-        document.getElementById("pin-form").style.display = "none";
         showDashboard();
       } else {
-        alert("❌ " + data.error);
+        alert("❌ " + (data.error || "Failed to create account."));
       }
     })
-    .catch(err => {
-      alert("⚠️ Could not connect to the server.");
+    .catch((err) => {
       console.error(err);
+      alert("⚠️ Server connection failed.");
     });
 }
 
