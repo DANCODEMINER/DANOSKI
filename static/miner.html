@@ -33,20 +33,20 @@
 
   <!-- LOGIN PIN VERIFY FORM -->
   <section id="login-pin-section">
-    <form id="pin-verify-form" style="display: none;" onsubmit="event.preventDefault(); verifyLoginPin();">
-      <h2>Verify PIN</h2>
-      <p id="pin-message" style="color: green; text-align: center; margin-bottom: 10px;"></p>
-      <div class="pin-row" style="display: flex; justify-content: center; gap: 10px;">
-        <input class="pin-input" id="pin1" maxlength="1" required />
-        <input class="pin-input" id="pin2" maxlength="1" required />
-        <input class="pin-input" id="pin3" maxlength="1" required />
-        <input class="pin-input" id="pin4" maxlength="1" required />
-      </div>
-      <button class="btn" type="submit">VERIFY PIN</button>
-      <div class="form-links">
-        <a href="#" onclick="showForm('login')">Back to Login</a>
-      </div>
-    </form>
+  <form id="pin-verify-form" style="display: none;" onsubmit="event.preventDefault(); verifyLoginPin();">
+    <h2>Verify PIN</h2>
+    <p id="pin-verify-message" style="color: green; text-align: center; margin-bottom: 10px;"></p>
+    <div class="pin-row" style="display: flex; justify-content: center; gap: 10px;">
+      <input class="pin-input" id="pinverify1" maxlength="1" required />
+      <input class="pin-input" id="pinverify2" maxlength="1" required />
+      <input class="pin-input" id="pinverify3" maxlength="1" required />
+      <input class="pin-input" id="pinverify4" maxlength="1" required />
+    </div>
+    <button class="btn" type="submit">VERIFY PIN</button>
+    <div class="form-links">
+      <a href="#" onclick="showForm('login')">Back to Login</a>
+    </div>
+  </form>
   </section>
 
   <!-- REGISTER FORM -->
