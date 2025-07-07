@@ -300,16 +300,18 @@ def user_login():
     cur.close()
     conn.close()
 
-    if user and bcrypt.checkpw(password.encode(), user[1].encode()):
-        user_id = user[0]
-        log_user_action(user_id, "User logged in")
-        return jsonify({"message": "Login successful."})
-
-    # Log failed login if user exists
     if user:
-        log_user_action(user[0], "Failed login attempt")
+        db_password = user[1]
+        # Ensure db_password is in bytes for bcrypt
+        if isinstance(db_password, str):
+            db_password = db_password.encode()
 
-    return jsonify({"error": "Invalid credentials."}), 401
+        if bcrypt.checkpw(password.encode(), db_password):
+            return jsonify({"message": "Login successful."})
+        else:
+            return jsonify({"error": "Incorrect password."}), 401
+    else:
+        return jsonify({"error": "User not found."}), 404
 
 @app.route("/user/verify-login-pin", methods=["POST"])
 def verify_login_pin():
