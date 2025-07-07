@@ -36,16 +36,27 @@
   <form id="pin-verify-form" style="display: none;" onsubmit="event.preventDefault(); verifyLoginPin();">
     <h2>Verify PIN</h2>
     <p id="pin-message" style="color: green; text-align: center; margin-bottom: 10px;"></p>
+
     <div class="pin-row" style="display: flex; justify-content: center; gap: 10px;">
       <input class="pin-input" id="pinverify1" maxlength="1" required />
       <input class="pin-input" id="pinverify2" maxlength="1" required />
       <input class="pin-input" id="pinverify3" maxlength="1" required />
       <input class="pin-input" id="pinverify4" maxlength="1" required />
     </div>
-    <button class="btn" type="submit">VERIFY PIN</button>
-    <div class="form-links">
-      <a href="#" onclick="showForm('login')">Back to Login</a> |
-      <a href="#" onclick="showForm('forgot')">Reset PIN</a>
+
+    <!-- Reset PIN Link -->
+    <div style="text-align: center; margin: 10px 0;">
+      <a href="#" onclick="showForm('forgot')" style="color: #007bff;">Reset PIN</a>
+    </div>
+
+    <!-- Verify Button -->
+    <button class="btn" type="submit" style="margin-top: 10px;">VERIFY PIN</button>
+
+    <!-- Logout Button -->
+    <div style="text-align: center; margin-top: 15px;">
+      <button type="button" onclick="logout()" style="padding: 8px 20px; background-color: red; color: white; border: none; border-radius: 4px; cursor: pointer;">
+        Logout
+      </button>
     </div>
   </form>
   </section>
