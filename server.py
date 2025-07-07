@@ -262,34 +262,28 @@ def create_account():
     password = data.get("password")
     pin = data.get("pin")
 
-    # Validate required fields
     if not all([full_name, country, email, password, pin]):
         return jsonify({"error": "All fields including PIN are required."}), 400
 
-    try:
-        # Hash password securely
-        hashed_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
+    hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()  # ✅ decode added
 
-        conn = get_db()
-        cur = conn.cursor()
+    conn = get_db()
+    cur = conn.cursor()
+    try:
         cur.execute(
             "INSERT INTO users (full_name, country, email, password, pin, verified) VALUES (%s, %s, %s, %s, %s, TRUE)",
-            (full_name, country, email, hashed_password, pin)
+            (full_name, country, email, hashed, pin)
         )
         conn.commit()
+    except Exception as e:
+        conn.rollback()
         cur.close()
         conn.close()
-
-        return jsonify({"message": "Account created successfully."})
-    
-    except Exception as e:
-        # Optional: log error for debugging
-        print("Account creation error:", e)
-        if conn:
-            conn.rollback()
-            cur.close()
-            conn.close()
         return jsonify({"error": "Failed to create account."}), 500
+
+    cur.close()
+    conn.close()
+    return jsonify({"message": "Account created successfully."})
         
 # === USER LOGIN ===
 
@@ -299,42 +293,28 @@ def user_login():
     email = data.get("email")
     password = data.get("password")
 
-    if not email or not password:
-        return jsonify({"error": "Email and password are required."}), 400
-
     conn = get_db()
     cur = conn.cursor()
-    try:
-        cur.execute("SELECT id, password, full_name, country FROM users WHERE email = %s", (email,))
-        user = cur.fetchone()
+    cur.execute("SELECT id, password, full_name, country FROM users WHERE email = %s", (email,))
+    user = cur.fetchone()
 
-        if user:
-            user_id, db_password, full_name, country = user
+    if user:
+        user_id, db_password, full_name, country = user
 
-            # Ensure password from DB is in bytes for bcrypt
-            if isinstance(db_password, str):
-                db_password = db_password.encode()
+        # bcrypt hash is stored as string, so encode it before check
+        if bcrypt.checkpw(password.encode(), db_password.encode()):
+            cur.close()
+            conn.close()
+            return jsonify({
+                "message": "Login successful",
+                "id": user_id,
+                "full_name": full_name,
+                "country": country
+            })
 
-            # Check password
-            if bcrypt.checkpw(password.encode(), db_password):
-                cur.close()
-                conn.close()
-                return jsonify({
-                    "message": "Login successful",
-                    "id": user_id,
-                    "full_name": full_name,
-                    "country": country
-                })
-
-        # If no user or password mismatch
-        cur.close()
-        conn.close()
-        return jsonify({"error": "Invalid email or password"}), 401
-
-    except Exception as e:
-        cur.close()
-        conn.close()
-        return jsonify({"error": "Server error during login."}), 500
+    cur.close()
+    conn.close()
+    return jsonify({"error": "Invalid email or password"}), 401
         
 @app.route("/user/verify-login-pin", methods=["POST"])
 def verify_login_pin():
