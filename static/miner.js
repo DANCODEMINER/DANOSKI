@@ -288,3 +288,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   bindPinInputs();
 });
+
+function focusFirstPinVerifyInput() {
+  const input = document.getElementById("pinverify1");
+  if (input) input.focus();
+}
