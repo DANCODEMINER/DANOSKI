@@ -73,7 +73,7 @@ function verifyOtp() {
     return;
   }
 
-  fetch("https://danoski-backend.onrender.com/verify-otp", {
+  fetch("https://danoski-backend.onrender.com", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, otp }),
