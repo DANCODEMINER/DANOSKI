@@ -62,36 +62,38 @@ function signupUser() {
     otpMsg.scrollIntoView({ behavior: "smooth", block: "center" });
     console.error(err);
   });
+  
 }
-
 function verifyOtp() {
   const email = document.getElementById("otp-email").value.trim();
   const otp = document.getElementById("otp-code").value.trim();
 
-  if (!otp) {
-    alert("Enter the OTP sent to your email.");
+  if (!email || !otp) {
+    alert("Please enter both email and OTP.");
     return;
   }
 
-  fetch("https://danoski-backend.onrender.com", {
+  fetch("https://danoski-backend.onrender.com/user/verify-otp", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, otp }),
   })
-    .then(res => res.json())
-    .then(data => {
-      if (data.message) {
-        // Hide OTP, Show PIN form
+    .then(res => res.json().then(data => ({ ok: res.ok, data })))
+    .then(({ ok, data }) => {
+      if (ok) {
+        alert("✅ OTP verified! Please create your PIN.");
         document.getElementById("otp-form").style.display = "none";
         document.getElementById("pin-form").style.display = "block";
-        alert("✅ OTP verified. Now create a 4-digit PIN.");
+
+        // Save user info temporarily if not already saved
+        localStorage.setItem("email", email);
       } else {
-        alert("❌ " + (data.error || "OTP verification failed."));
+        alert("❌ " + data.error);
       }
     })
     .catch(err => {
+      alert("⚠️ Could not connect to the server.");
       console.error(err);
-      alert("⚠️ Could not verify OTP.");
     });
 }
 
