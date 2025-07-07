@@ -274,10 +274,9 @@ function checkPinLength() {
 }
 
 function logout() {
-  alert("Logging out...");
-  document.getElementById("dashboard-page").style.display = "none";
-  document.getElementById("login-page").style.display = "block";
-  showForm("login");
+  sessionStorage.clear();
+  localStorage.clear();
+  window.location.href = "login.html"; // or whatever your login page is
 }
 
 function showDashboard() {
