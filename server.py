@@ -262,29 +262,35 @@ def create_account():
     password = data.get("password")
     pin = data.get("pin")
 
-    # Validate all required fields are present and not empty
+    # Validate required fields
     if not all([full_name, country, email, password, pin]):
         return jsonify({"error": "All fields including PIN are required."}), 400
 
-    hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
-    conn = get_db()
-    cur = conn.cursor()
     try:
+        # Hash password securely
+        hashed_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
+
+        conn = get_db()
+        cur = conn.cursor()
         cur.execute(
             "INSERT INTO users (full_name, country, email, password, pin, verified) VALUES (%s, %s, %s, %s, %s, TRUE)",
-            (full_name, country, email, hashed, pin)
+            (full_name, country, email, hashed_password, pin)
         )
         conn.commit()
-    except Exception as e:
-        conn.rollback()
         cur.close()
         conn.close()
-        # Optionally log e here for debugging
-        return jsonify({"error": "Failed to create account."}), 500
-    cur.close()
-    conn.close()
-    return jsonify({"message": "Account created successfully."})
 
+        return jsonify({"message": "Account created successfully."})
+    
+    except Exception as e:
+        # Optional: log error for debugging
+        print("Account creation error:", e)
+        if conn:
+            conn.rollback()
+            cur.close()
+            conn.close()
+        return jsonify({"error": "Failed to create account."}), 500
+        
 # === USER LOGIN ===
 
 @app.route("/user/login", methods=["POST"])
