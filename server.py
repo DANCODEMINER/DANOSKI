@@ -327,32 +327,36 @@ def reset_password():
 
 @app.route("/user/login", methods=["POST"])
 def user_login():
-    data = request.json
-    email = data.get("email")
-    password = data.get("password")
+    try:
+        data = request.json
+        email = data.get("email")
+        password = data.get("password")
 
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("SELECT id, password, full_name, country FROM users WHERE email = %s", (email,))
-    user = cur.fetchone()
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("SELECT id, password, full_name, country FROM users WHERE email = %s", (email,))
+        user = cur.fetchone()
 
-    if user:
-        user_id, db_password, full_name, country = user
+        if user:
+            user_id, db_password, full_name, country = user
 
-        # bcrypt hash is stored as string, so encode it before check
-        if bcrypt.checkpw(password.encode(), db_password.encode()):
-            cur.close()
-            conn.close()
-            return jsonify({
-                "message": "Login successful",
-                "id": user_id,
-                "full_name": full_name,
-                "country": country
-            })
+            if bcrypt.checkpw(password.encode(), db_password.encode()):
+                cur.close()
+                conn.close()
+                return jsonify({
+                    "message": "Login successful",
+                    "id": user_id,
+                    "full_name": full_name,
+                    "country": country
+                })
 
-    cur.close()
-    conn.close()
-    return jsonify({"error": "Invalid email or password"}), 401
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Invalid email or password"}), 401
+
+    except Exception as e:
+        print("Login error:", e)
+        return jsonify({"error": "Internal server error"}), 500
         
 @app.route("/user/verify-login-pin", methods=["POST"])
 def verify_login_pin():
