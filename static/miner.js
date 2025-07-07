@@ -168,7 +168,7 @@ function verifyLoginPin() {
 }
 
 function setUserPin() {
-  const pin = 
+  const pin =
     document.getElementById("pin1").value +
     document.getElementById("pin2").value +
     document.getElementById("pin3").value +
@@ -184,6 +184,11 @@ function setUserPin() {
   const email = localStorage.getItem("email");
   const password = localStorage.getItem("password");
 
+  if (!full_name || !country || !email || !password) {
+    alert("❌ Missing signup details. Please restart registration.");
+    return;
+  }
+
   fetch("https://danoski-backend.onrender.com/user/create-account", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -195,20 +200,21 @@ function setUserPin() {
       pin
     })
   })
-  .then(res => res.json().then(data => ({ ok: res.ok, data })))
-  .then(({ ok, data }) => {
-    if (ok) {
-      alert("✅ Account created successfully!");
-      sessionStorage.setItem("isLoggedIn", "true");
-      showDashboard();
-    } else {
-      alert("❌ " + data.error);
-    }
-  })
-  .catch(err => {
-    alert("⚠️ Server connection failed.");
-    console.error(err);
-  });
+    .then(res => res.json().then(data => ({ ok: res.ok, data })))
+    .then(({ ok, data }) => {
+      if (ok) {
+        alert("✅ Account created successfully!");
+        sessionStorage.setItem("isLoggedIn", "true");
+        document.getElementById("pin-form").style.display = "none";
+        showDashboard();
+      } else {
+        alert("❌ " + data.error);
+      }
+    })
+    .catch(err => {
+      alert("⚠️ Could not connect to the server.");
+      console.error(err);
+    });
 }
 
 // === PIN Input Activation ===
