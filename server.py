@@ -348,7 +348,7 @@ def forgot_password():
     cur.close()
     conn.close()
     send_otp(email, otp)
-    return jsonify({"message": "OTP sent to reset PIN."})
+    return jsonify({"message": "OTP sent to reset password."})
 
 @app.route("/user/reset-pin", methods=["POST"])
 def reset_pin():
