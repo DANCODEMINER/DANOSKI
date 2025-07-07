@@ -132,6 +132,41 @@ function loginUser() {
     });
 }
 
+function verifyLoginPin() {
+  const pin = 
+    document.getElementById("pinverify1").value +
+    document.getElementById("pinverify2").value +
+    document.getElementById("pinverify3").value +
+    document.getElementById("pinverify4").value;
+
+  if (pin.length !== 4) {
+    alert("Please enter a valid 4-digit PIN.");
+    return;
+  }
+
+  const email = sessionStorage.getItem("loginEmail");
+
+  fetch("https://danoski-backend.onrender.com/user/verify-login-pin", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, pin })
+  })
+    .then(res => res.json().then(data => ({ ok: res.ok, data })))
+    .then(({ ok, data }) => {
+      if (ok) {
+        alert("✅ PIN verified. Welcome back!");
+        sessionStorage.setItem("isLoggedIn", "true");
+        showDashboard();
+      } else {
+        alert("❌ " + data.error);
+      }
+    })
+    .catch((err) => {
+      alert("⚠️ Server error during PIN verification.");
+      console.error(err);
+    });
+}
+
 function setUserPin() {
   const pin1 = document.getElementById("pin1").value.trim();
   const pin2 = document.getElementById("pin2").value.trim();
