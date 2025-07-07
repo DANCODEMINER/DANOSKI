@@ -284,6 +284,24 @@ def create_account():
     cur.close()
     conn.close()
     return jsonify({"message": "Account created successfully."})
+
+@app.route("/user/verify-password-otp", methods=["POST"])
+def verify_password_otp():
+    data = request.json
+    email = data.get("email")
+    otp_input = data.get("otp")
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT code FROM otps WHERE email = %s ORDER BY id DESC LIMIT 1", (email,))
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if not row or row[0] != otp_input:
+        return jsonify({"error": "Invalid OTP."}), 400
+
+    return jsonify({"message": "OTP verified. Proceed to reset password."})
         
 # === USER LOGIN ===
 
