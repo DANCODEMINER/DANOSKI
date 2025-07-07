@@ -99,72 +99,37 @@ function verifyOtp() {
 
 function loginUser() {
   const email = document.getElementById("login-email").value.trim();
-  const password = document.getElementById("login-password").value.trim();
+  const password = document.getElementById("login-password").value;
 
-  const payload = { email, password };
+  if (!email || !password) {
+    alert("Please fill in all login fields.");
+    return;
+  }
 
   fetch("https://danoski-backend.onrender.com/user/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
+    body: JSON.stringify({ email, password })
   })
-  .then(res => res.json().then(data => ({ ok: res.ok, data })))
-  .then(({ ok, data }) => {
-    if (ok) {
-      localStorage.setItem("loginEmail", email);
-      alert("✅ Login successful. Please verify your PIN.");
-      showForm("pin-verify");
-    } else {
-      alert("❌ " + data.error);
-    }
-  })
-  .catch(err => {
-    alert("⚠️ Failed to connect to server.");
-    console.error(err);
-  });
-}
+    .then(res => res.json().then(data => ({ ok: res.ok, data })))
+    .then(({ ok, data }) => {
+      if (ok) {
+        // Save user email for PIN check
+        sessionStorage.setItem("loginEmail", email);
 
-function verifyLoginPin() {
-  const pin = document.getElementById("verify-pin1").value +
-              document.getElementById("verify-pin2").value +
-              document.getElementById("verify-pin3").value +
-              document.getElementById("verify-pin4").value;
-
-  const email = localStorage.getItem("loginEmail");
-  const pinMsg = document.getElementById("pin-verify-message");
-
-  if (pin.length !== 4) {
-    pinMsg.innerText = "❌ Please enter your 4-digit PIN.";
-    pinMsg.style.color = "red";
-    return;
-  }
-
-  fetch("https://danoski-backend.onrender.com/user/verify-login-pin", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, pin })
-  })
-  .then(res => res.json().then(data => ({ ok: res.ok, data })))
-  .then(({ ok, data }) => {
-    if (ok) {
-      pinMsg.innerText = "✅ PIN verified. Logging in...";
-      pinMsg.style.color = "green";
-      localStorage.setItem("isLoggedIn", "true");
-      showDashboard();
-    } else {
-      pinMsg.innerText = "❌ " + (data.error || "PIN verification failed.");
-      pinMsg.style.color = "red";
-    }
-  })
-  .catch(err => {
-    pinMsg.innerText = "⚠️ Server error.";
-    pinMsg.style.color = "orange";
-    console.error(err);
-  });
-
-  setTimeout(() => {
-    pinMsg.innerText = "";
-  }, 4000);
+        // Show PIN verification form
+        document.getElementById("login-form").style.display = "none";
+        document.getElementById("pin-verify-form").style.display = "block";
+        document.getElementById("pin-message").innerText = "Please enter your 4-digit PIN to continue.";
+        focusFirstPinVerifyInput();
+      } else {
+        alert("❌ " + data.error);
+      }
+    })
+    .catch((err) => {
+      alert("⚠️ Server error during login.");
+      console.error(err);
+    });
 }
 
 function setUserPin() {
