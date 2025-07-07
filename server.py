@@ -299,26 +299,43 @@ def user_login():
     email = data.get("email")
     password = data.get("password")
 
+    if not email or not password:
+        return jsonify({"error": "Email and password are required."}), 400
+
     conn = get_db()
     cur = conn.cursor()
-    cur.execute("SELECT id, password FROM users WHERE email = %s", (email,))
-    user = cur.fetchone()
-    cur.close()
-    conn.close()
+    try:
+        cur.execute("SELECT id, password, full_name, country FROM users WHERE email = %s", (email,))
+        user = cur.fetchone()
 
-    if user:
-        db_password = user[1]
-        # Ensure db_password is in bytes for bcrypt
-        if isinstance(db_password, str):
-            db_password = db_password.encode()
+        if user:
+            user_id, db_password, full_name, country = user
 
-        if bcrypt.checkpw(password.encode(), db_password):
-            return jsonify({"message": "Login successful."})
-        else:
-            return jsonify({"error": "Incorrect password."}), 401
-    else:
-        return jsonify({"error": "User not found."}), 404
+            # Ensure password from DB is in bytes for bcrypt
+            if isinstance(db_password, str):
+                db_password = db_password.encode()
 
+            # Check password
+            if bcrypt.checkpw(password.encode(), db_password):
+                cur.close()
+                conn.close()
+                return jsonify({
+                    "message": "Login successful",
+                    "id": user_id,
+                    "full_name": full_name,
+                    "country": country
+                })
+
+        # If no user or password mismatch
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Invalid email or password"}), 401
+
+    except Exception as e:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Server error during login."}), 500
+        
 @app.route("/user/verify-login-pin", methods=["POST"])
 def verify_login_pin():
     data = request.json
