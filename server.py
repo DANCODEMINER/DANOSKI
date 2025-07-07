@@ -302,6 +302,26 @@ def verify_password_otp():
         return jsonify({"error": "Invalid OTP."}), 400
 
     return jsonify({"message": "OTP verified. Proceed to reset password."})
+
+@app.route("/user/reset-password", methods=["POST"])
+def reset_password():
+    data = request.json
+    email = data.get("email")
+    new_password = data.get("password")
+
+    if not email or not new_password:
+        return jsonify({"error": "Missing email or password."}), 400
+
+    hashed = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode()
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("UPDATE users SET password = %s WHERE email = %s", (hashed, email))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    return jsonify({"message": "Password has been reset successfully."})
         
 # === USER LOGIN ===
 
