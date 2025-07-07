@@ -388,27 +388,62 @@ def forgot_password():
     send_otp(email, otp)
     return jsonify({"message": "OTP sent to reset password."})
 
-@app.route("/user/reset-pin", methods=["POST"])
-def reset_pin():
+@app.route("/user/sendresetpin", methods=["POST"])
+def send_reset_pin_otp():
+    data = request.json
+    email = data.get("email")
+    otp = generate_otp()
+
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO otps (email, code)
+            VALUES (%s, %s)
+            ON CONFLICT (email) DO UPDATE SET code = EXCLUDED.code, created_at = CURRENT_TIMESTAMP
+        """, (email, otp))
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        send_otp(email, otp)
+        return jsonify({"message": "OTP sent to reset PIN."})
+    except Exception as e:
+        print("Error sending PIN OTP:", e)
+        return jsonify({"error": "Server error"}), 500
+
+@app.route("/user/verify-pin-otp", methods=["POST"])
+def verify_pin_otp():
     data = request.json
     email = data.get("email")
     otp_input = data.get("otp")
-    new_pin = data.get("pin")
 
     conn = get_db()
     cur = conn.cursor()
     cur.execute("SELECT code FROM otps WHERE email = %s ORDER BY id DESC LIMIT 1", (email,))
     row = cur.fetchone()
+    cur.close()
+    conn.close()
+
     if not row or row[0] != otp_input:
-        cur.close()
-        conn.close()
         return jsonify({"error": "Invalid OTP."}), 400
 
-    cur.execute("UPDATE users SET pin = %s WHERE email = %s", (new_pin, email))
+    return jsonify({"message": "OTP verified."})
+
+@app.route("/user/reset-pin", methods=["POST"])
+def reset_pin():
+    data = request.json
+    email = data.get("email")
+    pin = data.get("pin")
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("UPDATE users SET pin = %s WHERE email = %s", (pin, email))
     conn.commit()
     cur.close()
     conn.close()
-    return jsonify({"message": "PIN reset successfully."})
+
+    return jsonify({"message": "PIN reset successful."})
 
 # === MINING / AD WATCHING ===
 
