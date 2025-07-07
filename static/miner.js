@@ -300,7 +300,7 @@ setInterval(() => {
 
 // === DOMContentLoaded Init ===
 document.addEventListener("DOMContentLoaded", () => {
-  if (sessionStorage.getItem("isLoggedIn") === "true")
+  if (sessionStorage.getItem("isLoggedIn") === "true") {
     showDashboard();
   }
 
