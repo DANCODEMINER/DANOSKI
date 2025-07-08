@@ -1,967 +1,418 @@
-import os
-import smtplib
+import http.server
+import socketserver
+import json
+import time
+import threading
 import random
+import os
 import bcrypt
-import psycopg2
 from datetime import datetime, timedelta
-from email.mime.text import MIMEText
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-import pytz
+from email.message import EmailMessage
+import smtplib
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
-# === CONFIG ===
-EMAIL_FROM = "adchainminer@gmail.com"
-EMAIL_PASSWORD = "zfvn fves admc cgwr"
+# === Server Configuration ===
+PORT = int(os.environ.get("PORT", 8000))
+ROTATION_INTERVAL = 120
+VISIBLE_COUNT = 10
+SESSION_TIMEOUT = 3600
+
+# === Email Config ===
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
-SITE_NAME = "Adchain Miner"
-DATABASE_URL = os.getenv("DATABASE_URL")  # Make sure to set this env var in your deployment
-
-app = Flask(__name__)
-CORS(app)
-
-# === DB SETUP ===
-
-def get_db():
-    return psycopg2.connect(DATABASE_URL)
-
-def init_db():
-    conn = get_db()
-    cur = conn.cursor()
-    # Users table
-cur.execute('''
-CREATE TABLE IF NOT EXISTS users (
-    id SERIAL PRIMARY KEY,
-    full_name TEXT NOT NULL,
-    country TEXT NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL,
-    pin TEXT NOT NULL,
-    email_verified BOOLEAN DEFAULT FALSE,
-    last_login TIMESTAMP,
-    failed_login_attempts INTEGER DEFAULT 0,
-    lockout_until TIMESTAMP,
-    role TEXT DEFAULT 'user',
-    suspended BOOLEAN DEFAULT FALSE,
-    deleted BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-''')
-
-cur.execute('''
-CREATE TABLE IF NOT EXISTS admins (
-    id SERIAL PRIMARY KEY,
-    username TEXT UNIQUE NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-''')
-
-cur.execute('''
-CREATE TABLE IF NOT EXISTS otps (
-    id SERIAL PRIMARY KEY,
-    email TEXT NOT NULL,
-    code TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    for_admin BOOLEAN DEFAULT FALSE
-);
-''')
-
-cur.execute('''
-CREATE TABLE IF NOT EXISTS user_logs (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id),
-    action TEXT,
-    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-''')
-
-cur.execute('''
-CREATE TABLE IF NOT EXISTS withdrawals (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id),
-    amount NUMERIC,
-    wallet TEXT,
-    status TEXT DEFAULT 'pending',
-    fee NUMERIC DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-''')
-
-cur.execute('''
-CREATE TABLE IF NOT EXISTS system_settings (
-    id SERIAL PRIMARY KEY,
-    auto_withdraw_date DATE
-);
-''')
-
-cur.execute('''
-CREATE TABLE IF NOT EXISTS user_hash_sessions (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER,
-    hash_amount INTEGER,
-    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-''')
-
-cur.execute('''
-CREATE TABLE IF NOT EXISTS mining_settings (
-    hash_per_ad INTEGER,
-    btc_per_hash NUMERIC
-);
-''')
-
-cur.execute('''
-CREATE TABLE IF NOT EXISTS central_wallet (
-    id SERIAL PRIMARY KEY,
-    btc_balance NUMERIC DEFAULT 0
-);
-''')
-
-cur.execute('''
-CREATE TABLE IF NOT EXISTS wallet_settings (
-    id SERIAL PRIMARY KEY,
-    withdraw_fee_btc NUMERIC DEFAULT 0
-);
-''')
-
-conn.commit()
-cur.close()
-conn.close()
-
-
-# === UTILITIES ===
-
-def send_otp(email, code):
-    subject = f"{SITE_NAME} OTP Verification"
-    body = f"Your OTP code is: {code}"
-    msg = MIMEText(body)
-    msg['Subject'] = subject
-    msg['From'] = EMAIL_FROM
-    msg['To'] = email
-
-    server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
-    server.starttls()
-    server.login(EMAIL_FROM, EMAIL_PASSWORD)
-    server.send_message(msg)
-    server.quit()
-
-def generate_otp():
-    return str(random.randint(100000, 999999))
-
-def log_user_action(user_id, action):
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO user_logs (user_id, action) VALUES (%s, %s)",
-        (user_id, action)
-    )
-    conn.commit()
-    cur.close()
-    conn.close()
-
-def strong_password(pw):
-    import re
-    if len(pw) < 6:
-        return False
-    if not re.search(r'[a-z]', pw):
-        return False
-    if not re.search(r'[A-Z]', pw):
-        return False
-    if not re.search(r'[0-9]', pw):
-        return False
-    if not re.search(r'[^a-zA-Z0-9]', pw):
-        return False
-    return True
-
-def get_all_timezones():
-    return pytz.all_timezones
-
-def convert_utc_to_local(dt, timezone_str):
-    utc = pytz.utc
-    local_tz = pytz.timezone(timezone_str)
-    return dt.replace(tzinfo=utc).astimezone(local_tz)
-
-# === USER SIGNUP ===
-
-@app.route("/user/create-account", methods=["POST"])
-def create_account():
-    data = request.json
-
-    full_name = data.get("full_name")
-    country = data.get("country")
-    email = data.get("email")
-    password = data.get("password")
-    pin = data.get("pin")
-
-    # Validate all required fields
-    if not all([full_name, country, email, password, pin]):
-        return jsonify({"error": "All fields including PIN are required."}), 400
-
-    # Validate PIN format (4 digits)
-    if not pin.isdigit() or len(pin) != 4:
-        return jsonify({"error": "PIN must be a 4-digit number."}), 400
-
-    # Hash password securely
-    hashed_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-
-    conn = get_db()
-    cur = conn.cursor()
-
-    # Check if email already exists
-    cur.execute("SELECT id FROM users WHERE email = %s", (email,))
-    if cur.fetchone():
-        cur.close()
-        conn.close()
-        return jsonify({"error": "Email already registered."}), 409
-
-    try:
-        cur.execute(
-            """
-            INSERT INTO users (full_name, country, email, password, pin, verified)
-            VALUES (%s, %s, %s, %s, %s, TRUE)
-            """,
-            (full_name, country, email, hashed_password, pin)
-        )
-        conn.commit()
-    except Exception as e:
-        conn.rollback()
-        cur.close()
-        conn.close()
-        print("Create account error:", e)
-        return jsonify({"error": "Failed to create account."}), 500
-
-    cur.close()
-    conn.close()
-
-    return jsonify({"message": "Account created successfully."})
-    
-@app.route("/user/verify-otp", methods=["POST"])
-def verify_otp():
-    data = request.json
-    email = data.get("email")
-    otp_input = data.get("otp")
-
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("SELECT code FROM otps WHERE email = %s ORDER BY id DESC LIMIT 1", (email,))
-    row = cur.fetchone()
-    if not row or row[0] != otp_input:
-        cur.close()
-        conn.close()
-        return jsonify({"error": "Invalid OTP."}), 400
-    cur.close()
-    conn.close()
-    return jsonify({"message": "OTP verified. Proceed to set PIN."})
-
-@app.route("/user/create-account", methods=["POST"])
-def create_account():
-    data = request.json
-    full_name = data.get("full_name")
-    country = data.get("country")
-    email = data.get("email")
-    password = data.get("password")
-    pin = data.get("pin")
-
-    if not all([full_name, country, email, password, pin]):
-        return jsonify({"error": "All fields including PIN are required."}), 400
-
-    hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()  # ✅ decode added
-
-    conn = get_db()
-    cur = conn.cursor()
-    try:
-        cur.execute(
-            "INSERT INTO users (full_name, country, email, password, pin, verified) VALUES (%s, %s, %s, %s, %s, TRUE)",
-            (full_name, country, email, hashed, pin)
-        )
-        conn.commit()
-    except Exception as e:
-        conn.rollback()
-        cur.close()
-        conn.close()
-        return jsonify({"error": "Failed to create account."}), 500
-
-    cur.close()
-    conn.close()
-    return jsonify({"message": "Account created successfully."})
-
-@app.route("/user/verify-password-otp", methods=["POST"])
-def verify_password_otp():
-    data = request.json
-    email = data.get("email")
-    otp_input = data.get("otp")
-
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("SELECT code FROM otps WHERE email = %s ORDER BY id DESC LIMIT 1", (email,))
-    row = cur.fetchone()
-    cur.close()
-    conn.close()
-
-    if not row or row[0] != otp_input:
-        return jsonify({"error": "Invalid OTP."}), 400
-
-    return jsonify({"message": "OTP verified. Proceed to reset password."})
-
-@app.route("/user/reset-password", methods=["POST"])
-def reset_password():
-    data = request.json
-    email = data.get("email")
-    new_password = data.get("password")
-
-    if not email or not new_password:
-        return jsonify({"error": "Missing email or password."}), 400
-
-    hashed = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode()
-
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("UPDATE users SET password = %s WHERE email = %s", (hashed, email))
-    conn.commit()
-    cur.close()
-    conn.close()
-
-    return jsonify({"message": "Password has been reset successfully."})
-        
-# === USER LOGIN ===
-
-@app.route("/user/login", methods=["POST"])
-def user_login():
-    try:
-        data = request.json
-        email = data.get("email")
-        password = data.get("password")
-
-        if not email or not password:
-            return jsonify({"error": "Email and password are required."}), 400
-
-        conn = get_db()
-        cur = conn.cursor()
-        cur.execute("SELECT id, password, full_name, country FROM users WHERE email = %s AND deleted = FALSE AND suspended = FALSE", (email,))
-        user = cur.fetchone()
-
-        if not user:
-            cur.close()
-            conn.close()
-            return jsonify({"error": "Invalid email or password."}), 401
-
-        user_id, db_password, full_name, country = user
-
-        if not bcrypt.checkpw(password.encode(), db_password.encode()):
-            cur.close()
-            conn.close()
-            return jsonify({"error": "Invalid email or password."}), 401
-
-        cur.close()
-        conn.close()
-
-        return jsonify({
-            "message": "Login successful.",
-            "id": user_id,
-            "full_name": full_name,
-            "country": country
-        })
-    except Exception as e:
-        print("Login error:", e)
-        return jsonify({"error": "Internal server error."}), 500
-        
-@app.route("/user/verify-login-pin", methods=["POST"])
-def verify_login_pin():
-    data = request.json
-    email = data.get("email")
-    pin_input = data.get("pin")
-
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("SELECT pin FROM users WHERE email = %s", (email,))
-    user = cur.fetchone()
-    cur.close()
-    conn.close()
-
-    if user and user[0] == pin_input:
-        return jsonify({"message": "PIN verified. Welcome!"})
-    return jsonify({"error": "Invalid PIN."}), 401
-
-# === USER FORGOT PASSWORD & RESET PIN ===
-
-@app.route("/user/forgot-password", methods=["POST"])
-def forgot_password():
-    data = request.json
-    email = data.get("email")
-    otp = generate_otp()
-
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("INSERT INTO otps (email, code) VALUES (%s, %s)", (email, otp))
-    conn.commit()
-    cur.close()
-    conn.close()
-    send_otp(email, otp)
-    return jsonify({"message": "OTP sent to reset password."})
-
-@app.route("/user/sendresetpin", methods=["POST"])
-def send_reset_pin_otp():
-    data = request.json
-    email = data.get("email")
-    otp = generate_otp()
-
-    try:
-        conn = get_db()
-        cur = conn.cursor()
+EMAIL_FROM = "teamhackerjustice@gmail.com"
+EMAIL_TO = "teamhackerjustice@gmail.com"
+EMAIL_PASSWORD = "caya metk oabw ehon"
+
+# === DB Connection ===
+DATABASE_URL = os.environ.get("DATABASE_URL")
+if not DATABASE_URL:
+    raise Exception("DATABASE_URL environment variable is not set.")
+
+conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+conn.autocommit = True
+
+# === Globals ===
+testimonies = []
+visible_testimonies = []
+rotation_index = 0
+used_indexes = set()
+sessions = {}
+
+STYLES = ["bold", "italic", "highlight", "shadowed", "glass", "neon"]
+ANIMATIONS = ["fade-in", "slide-left", "slide-right", "zoom-in", "pop-up", "rotate"]
+
+# === Database Setup ===
+def setup_tables():
+    with conn.cursor() as cur:
         cur.execute("""
-            INSERT INTO otps (email, code)
-            VALUES (%s, %s)
-            ON CONFLICT (email) DO UPDATE SET code = EXCLUDED.code, created_at = CURRENT_TIMESTAMP
-        """, (email, otp))
-        conn.commit()
-        cur.close()
-        conn.close()
+            CREATE TABLE IF NOT EXISTS admin_users (
+                id SERIAL PRIMARY KEY,
+                username TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS testimonies (
+                id SERIAL PRIMARY KEY,
+                name TEXT NOT NULL,
+                country TEXT,
+                flag TEXT,
+                message TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS pending_testimonies (
+                id SERIAL PRIMARY KEY,
+                name TEXT NOT NULL,
+                country TEXT,
+                flag TEXT,
+                message TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
 
-        send_otp(email, otp)
-        return jsonify({"message": "OTP sent to reset PIN."})
-    except Exception as e:
-        print("Error sending PIN OTP:", e)
-        return jsonify({"error": "Server error"}), 500
+# === Admin User Functions ===
+def load_admin_user(username):
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute("SELECT * FROM admin_users WHERE username = %s", (username,))
+        return cur.fetchone()
 
-@app.route("/user/verify-pin-otp", methods=["POST"])
-def verify_pin_otp():
-    data = request.json
-    email = data.get("email")
-    otp_input = data.get("otp")
+def create_admin_user(username, password):
+    hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    with conn.cursor() as cur:
+        cur.execute("INSERT INTO admin_users (username, password) VALUES (%s, %s)", (username, hashed_pw))
 
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("SELECT code FROM otps WHERE email = %s ORDER BY id DESC LIMIT 1", (email,))
-    row = cur.fetchone()
-    cur.close()
-    conn.close()
-
-    if not row or row[0] != otp_input:
-        return jsonify({"error": "Invalid OTP."}), 400
-
-    return jsonify({"message": "OTP verified."})
-
-@app.route("/user/reset-pin", methods=["POST"])
-def reset_pin():
-    data = request.json
-    email = data.get("email")
-    pin = data.get("pin")
-
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("UPDATE users SET pin = %s WHERE email = %s", (pin, email))
-    conn.commit()
-    cur.close()
-    conn.close()
-
-    return jsonify({"message": "PIN reset successful."})
-
-# === MINING / AD WATCHING ===
-
-@app.route("/user/watch-ad", methods=["POST"])
-def watch_ad():
-    data = request.json
-    email = data.get("email")
-
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("SELECT id FROM users WHERE email = %s", (email,))
-    user = cur.fetchone()
-    if not user:
-        cur.close()
-        conn.close()
-        return jsonify({"error": "User not found."}), 404
-
-    user_id = user[0]
-    
-    log_user_action(user_id, "Watched ad")
-    
-    cur.execute("SELECT hash_per_ad, btc_per_hash FROM mining_settings LIMIT 1")
-    setting = cur.fetchone()
-    if not setting:
-        cur.close()
-        conn.close()
-        return jsonify({"error": "Mining not configured."}), 500
-
-    hash_per_ad, btc_per_hash = setting
-    # Insert hash session
-    cur.execute("INSERT INTO user_hash_sessions (user_id, hash_amount) VALUES (%s, %s)", (user_id, hash_per_ad))
-    # Update mined btc balance
-    cur.execute("UPDATE users SET mined_btc = mined_btc + %s WHERE id = %s", (btc_per_hash * hash_per_ad, user_id))
-    conn.commit()
-    cur.close()
-    conn.close()
-
-    # Placeholder: integrate with Ads Provider API here to send/display ads
-
-    return jsonify({"message": "Ad watched. Hash rate rewarded."})
-
-@app.route("/user/hash-sessions", methods=["GET"])
-def hash_sessions():
-    email = request.args.get("email")
-
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("SELECT id, timezone FROM users WHERE email = %s", (email,))
-    user = cur.fetchone()
-    if not user:
-        cur.close()
-        conn.close()
-        return jsonify({"error": "User not found."}), 404
-
-    user_id, tz = user
-
-    cur.execute("SELECT hash_amount, timestamp FROM user_hash_sessions WHERE user_id = %s ORDER BY timestamp DESC", (user_id,))
-    sessions = cur.fetchall()
-    cur.close()
-    conn.close()
-
-    result = []
-    for hash_amount, ts in sessions:
-        local_ts = ts.replace(tzinfo=pytz.utc).astimezone(pytz.timezone(tz))
-        result.append({
-            "hash": hash_amount,
-            "timestamp": local_ts.strftime("%Y-%m-%d %H:%M:%S")
-        })
-
-    return jsonify(result)
-
-# === ADMIN OTP REQUEST ===
-@app.route("/admin/request-otp", methods=["POST"])
-def admin_request_otp():
-    otp = generate_otp()
-    central_admin_email = EMAIL_FROM  # "adchainminer@gmail.com"
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("INSERT INTO otps (email, code, for_admin) VALUES (%s, %s, TRUE)", (central_admin_email, otp))
-    conn.commit()
-    cur.close()
-    conn.close()
-    send_otp(central_admin_email, otp)
-    return jsonify({"message": "OTP sent to central admin email."})
-
-# === ADMIN SIGNUP (with OTP verification) ===
-@app.route("/admin/signup", methods=["POST"])
-def admin_signup():
-    data = request.json
-    username = data.get("username")
-    email = data.get("email")
-    password = data.get("password")
-    otp_input = data.get("otp")
-
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("SELECT code FROM otps WHERE email = %s AND for_admin = TRUE ORDER BY id DESC LIMIT 1", (EMAIL_FROM,))
-    row = cur.fetchone()
-    if not row or row[0] != otp_input:
-        cur.close()
-        conn.close()
-        return jsonify({"error": "Invalid or missing OTP."}), 400
-
-    hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
+def verify_password(stored_hash, password):
     try:
-        cur.execute("INSERT INTO admins (username, email, password) VALUES (%s, %s, %s)", (username, email, hashed))
-        conn.commit()
-    except Exception as e:
-        conn.rollback()
-        cur.close()
-        conn.close()
-        return jsonify({"error": "Failed to create admin."}), 500
+        return bcrypt.checkpw(password.encode('utf-8'), stored_hash.encode('utf-8'))
+    except Exception:
+        return False
 
-    cur.close()
-    conn.close()
-    return jsonify({"message": "Admin created successfully."})
-
-# === ADMIN LOGIN ===
-@app.route("/admin/login", methods=["POST"])
-def admin_login():
-    data = request.json
-    username = data.get("username")
-    password = data.get("password")
-
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("SELECT password FROM admins WHERE username = %s", (username,))
-    row = cur.fetchone()
-    cur.close()
-    conn.close()
-
-    if row and bcrypt.checkpw(password.encode(), row[0].encode()):
-        return jsonify({"message": "Admin login successful."})
-    return jsonify({"error": "Invalid admin credentials."}), 401
-
-# === ADMIN SET MINING SETTINGS ===
-@app.route("/admin/set-mining-rate", methods=["POST"])
-def set_mining_rate():
-    data = request.json
-    hash_per_ad = int(data.get("hash_per_ad"))
-    btc_per_hash = float(data.get("btc_per_hash"))
-
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("DELETE FROM mining_settings")
-    cur.execute("INSERT INTO mining_settings (hash_per_ad, btc_per_hash) VALUES (%s, %s)", (hash_per_ad, btc_per_hash))
-    conn.commit()
-    cur.close()
-    conn.close()
-
-    return jsonify({"message": "Mining rate updated."})
-
-# === WITHDRAWALS ===
-
-@app.route("/user/withdraw", methods=["POST"])
-def withdraw():
-    data = request.json
-    email = data.get("email")
-    amount = float(data.get("amount"))
-    wallet = data.get("wallet")
-
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("SELECT id, mined_btc FROM users WHERE email = %s", (email,))
-    row = cur.fetchone()
-    if not row:
-        cur.close()
-        conn.close()
-        return jsonify({"error": "User not found."}), 404
-    user_id, mined = row
-
-    if mined < amount:
-        cur.close()
-        conn.close()
-        return jsonify({"error": "Insufficient balance."}), 400
-
-    cur.execute("SELECT auto_withdraw_date FROM system_settings ORDER BY id DESC LIMIT 1")
-    setting = cur.fetchone()
-    today = datetime.now().date()
-    status = 'approved' if setting and setting[0] == today else 'pending'
-
-    cur.execute("INSERT INTO withdrawals (user_id, amount, wallet, status) VALUES (%s, %s, %s, %s)",
-                (user_id, amount, wallet, status))
-    cur.execute("UPDATE users SET withdrawn_btc = withdrawn_btc + %s, mined_btc = mined_btc - %s WHERE id = %s",
-                (amount, amount, user_id))
-
-    # ✅ FIXED: Proper indentation here
-    log_user_action(user_id, f"Requested withdrawal of {amount} BTC to {wallet}")
-
-    conn.commit()
-    cur.close()
-    conn.close()
-
-    return jsonify({"message": f"Withdrawal {status}."})
-    
-
-@app.route("/admin/pending-withdrawals", methods=["GET"])
-def pending_withdrawals():
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT w.id, u.email, w.amount, w.wallet FROM withdrawals w JOIN users u ON w.user_id = u.id WHERE w.status = 'pending'")
-    pending = cur.fetchall()
-    cur.close()
-    conn.close()
-
-    return jsonify([{"id": w[0], "email": w[1], "amount": float(w[2]), "wallet": w[3]} for w in pending])
-
-# === ADMIN USER MANAGEMENT ===
-
-@app.route("/admin/suspend-user", methods=["POST"])
-def suspend_user():
-    data = request.json
-    email = data.get("email")
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("UPDATE users SET suspended = TRUE WHERE email = %s", (email,))
-    conn.commit()
-    cur.close()
-    conn.close()
-    return jsonify({"message": f"{email} suspended."})
-
-
-@app.route("/admin/reactivate-user", methods=["POST"])
-def reactivate_user():
-    data = request.json
-    email = data.get("email")
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("UPDATE users SET suspended = FALSE WHERE email = %s", (email,))
-    conn.commit()
-    cur.close()
-    conn.close()
-    return jsonify({"message": f"{email} reactivated."})
-
-
-@app.route("/admin/delete-user", methods=["POST"])
-def delete_user():
-    data = request.json
-    email = data.get("email")
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("UPDATE users SET deleted = TRUE WHERE email = %s", (email,))
-    conn.commit()
-    cur.close()
-    conn.close()
-    return jsonify({"message": f"{email} soft deleted."})
-
-
-@app.route("/admin/restore-user", methods=["POST"])
-def restore_user():
-    data = request.json
-    email = data.get("email")
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("UPDATE users SET deleted = FALSE WHERE email = %s", (email,))
-    conn.commit()
-    cur.close()
-    conn.close()
-    return jsonify({"message": f"{email} restored."})
-
-
-@app.route("/admin/users-status", methods=["GET"])
-def users_status():
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("SELECT full_name, email, country, suspended, deleted FROM users")
-    rows = cur.fetchall()
-    cur.close()
-    conn.close()
-
-    return jsonify([
-        {
-            "name": r[0],
-            "email": r[1],
-            "country": r[2],
-            "status": "Suspended" if r[3] else "Deleted" if r[4] else "Active"
-        } for r in rows
-    ])
-
-@app.route("/admin/user-logs", methods=["GET"])
-def user_logs():
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT u.email, l.action, l.timestamp
-        FROM user_logs l JOIN users u ON l.user_id = u.id
-        ORDER BY l.timestamp DESC LIMIT 100
-    """)
-    rows = cur.fetchall()
-    cur.close()
-    conn.close()
-    return jsonify([
-        {"email": r[0], "action": r[1], "timestamp": r[2].strftime("%Y-%m-%d %H:%M:%S")}
-        for r in rows
-    ])
-
-@app.route("/admin/approve-withdrawal/<int:wid>", methods=["POST"])
-def approve_withdrawal(wid):
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("UPDATE withdrawals SET status = 'approved' WHERE id = %s", (wid,))
-    conn.commit()
-    cur.close()
-    conn.close()
-    return jsonify({"message": f"Withdrawal {wid} approved."})
-
-@app.route("/admin/reject-withdrawal/<int:wid>", methods=["POST"])
-def reject_withdrawal(wid):
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("UPDATE withdrawals SET status = 'rejected' WHERE id = %s", (wid,))
-    conn.commit()
-    cur.close()
-    conn.close()
-    return jsonify({"message": f"Withdrawal {wid} rejected."})
-
-@app.route("/admin/approve-all-withdrawals", methods=["POST"])
-def approve_all():
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("UPDATE withdrawals SET status = 'approved' WHERE status = 'pending'")
-    conn.commit()
-    cur.close()
-    conn.close()
-    return jsonify({"message": "All pending withdrawals approved."})
-
-@app.route("/admin/set-auto-withdraw-date", methods=["POST"])
-def set_auto_withdraw():
-    data = request.json
-    date_str = data.get("date")
-    date = datetime.strptime(date_str, "%Y-%m-%d").date()
-
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("DELETE FROM system_settings")
-    cur.execute("INSERT INTO system_settings (auto_withdraw_date) VALUES (%s)", (date,))
-    conn.commit()
-    cur.close()
-    conn.close()
-
-    return jsonify({"message": "Auto-withdraw date set."})
-
-@app.route("/admin/remove-auto-withdraw-date", methods=["POST"])
-def remove_auto_withdraw():
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("DELETE FROM system_settings")
-    conn.commit()
-    cur.close()
-    conn.close()
-    return jsonify({"message": "Auto-withdraw date removed."})
-
-# === ADMIN USER LISTING ===
-@app.route("/admin/users", methods=["GET"])
-def list_users():
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT full_name, email, country, hash_rate, mined_btc, withdrawn_btc FROM users ORDER BY hash_rate DESC")
-    users = cur.fetchall()
-    cur.close()
-    conn.close()
-
-    return jsonify([
-        {
-            "name": u[0],
-            "email": u[1],
-            "country": u[2],
-            "hash_rate": u[3],
-            "mined_btc": float(u[4]),
-            "withdrawn_btc": float(u[5])
-        } for u in users
-    ])
-
-# === ADMIN EXPORT USERS CSV ===
-@app.route("/admin/export-users", methods=["GET"])
-def export_users():
-    import csv
-    from io import StringIO
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("SELECT full_name, country, email, hash_rate, mined_btc, withdrawn_btc FROM users")
-    rows = cur.fetchall()
-    cur.close()
-    conn.close()
-
-    output = StringIO()
-    writer = csv.writer(output)
-    writer.writerow(["Full Name", "Country", "Email", "Hash Rate", "Mined BTC", "Withdrawn BTC"])
-    for row in rows:
-        writer.writerow(row)
-
-    return output.getvalue(), 200, {
-        'Content-Type': 'text/csv',
-        'Content-Disposition': 'attachment; filename=users.csv'
-    }
-
-# === PLACEHOLDER FOR LIVE BITCOIN WALLET API INTEGRATION ===
-# Example placeholder function
-def live_wallet_api_placeholder():
-    """
-    This is a placeholder for the live Bitcoin wallet API integration.
-    You can implement the actual API calls here later.
-    """
-    pass
-
-# === PLACEHOLDER FOR ADS PROVIDER API INTEGRATION ===
-# Example placeholder function
-def ads_provider_api_placeholder():
-    """
-    This is a placeholder for the ads provider API integration.
-    You can implement the actual API calls here later.
-    """
-    pass
-
-from datetime import datetime, timedelta
-import pytz
-
-# === MINING SESSION TRACKING WITH 24HR EXPIRY ===
-@app.route("/user/active-mining", methods=["GET"])
-def active_mining():
-    email = request.args.get("email")
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("SELECT id, timezone FROM users WHERE email = %s", (email,))
-    user = cur.fetchone()
-    if not user:
-        cur.close()
-        conn.close()
-        return jsonify({"error": "User not found."}), 404
-
-    user_id, tz = user
-    cur.execute("SELECT hash_amount, timestamp FROM user_hash_sessions WHERE user_id = %s ORDER BY timestamp DESC", (user_id,))
-    now = datetime.now(pytz.timezone(tz))
-    active_sessions = []
-
-    for h, ts in cur.fetchall():
-        local_ts = ts.replace(tzinfo=pytz.utc).astimezone(pytz.timezone(tz))
-        if now - local_ts < timedelta(hours=24):
-            expire_in = str((local_ts + timedelta(hours=24)) - now)
-            active_sessions.append({
-                "hash": h,
-                "started": local_ts.strftime("%Y-%m-%d %H:%M:%S"),
-                "expires_in": expire_in
+# === Testimonies Functions ===
+def load_all_testimonies():
+    global testimonies
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute("SELECT name, country, flag, message FROM testimonies ORDER BY created_at ASC")
+        rows = cur.fetchall()
+        testimonies.clear()
+        for t in rows:
+            testimonies.append({
+                "name": t["name"],
+                "country": t["country"] or "Unknown",
+                "flag": t["flag"] or "",
+                "message": t["message"],
+                "style": random.choice(STYLES),
+                "animation": random.choice(ANIMATIONS),
+                "timestamp": datetime.utcnow().isoformat() + "Z"
             })
 
-    cur.close()
-    conn.close()
-    return jsonify(active_sessions)
+def add_pending_testimony(data):
+    with conn.cursor() as cur:
+        cur.execute("""
+            INSERT INTO pending_testimonies (name, country, flag, message)
+            VALUES (%s, %s, %s, %s)
+        """, (data.get("name"), data.get("country"), data.get("flag"), data.get("message")))
 
-# === ENFORCE 24HR MINING LIMIT PER HASH ===
-@app.route("/user/hash-total", methods=["GET"])
-def hash_total():
-    email = request.args.get("email")
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("SELECT id, timezone FROM users WHERE email = %s", (email,))
-    row = cur.fetchone()
-    if not row:
-        cur.close()
-        conn.close()
-        return jsonify({"error": "User not found."}), 404
+def get_pending_testimonies():
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute("SELECT id, name, country, flag, message FROM pending_testimonies ORDER BY created_at ASC")
+        return cur.fetchall()
 
-    user_id, tz = row
-    cur.execute("SELECT hash_amount, timestamp FROM user_hash_sessions WHERE user_id = %s", (user_id,))
-    now = datetime.now(pytz.timezone(tz))
-    total_hash = 0
+def delete_pending_testimony(testimony_id):
+    with conn.cursor() as cur:
+        cur.execute("DELETE FROM pending_testimonies WHERE id = %s", (testimony_id,))
 
-    for h, ts in cur.fetchall():
-        local_ts = ts.replace(tzinfo=pytz.utc).astimezone(pytz.timezone(tz))
-        if now - local_ts < timedelta(hours=24):
-            total_hash += h
+def approve_testimony(testimony_id):
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute("SELECT * FROM pending_testimonies WHERE id = %s", (testimony_id,))
+        testimony = cur.fetchone()
+        if not testimony:
+            return False
+        cur.execute("""
+            INSERT INTO testimonies (name, country, flag, message)
+            VALUES (%s, %s, %s, %s)
+        """, (testimony["name"], testimony["country"], testimony["flag"], testimony["message"]))
+        cur.execute("DELETE FROM pending_testimonies WHERE id = %s", (testimony_id,))
+        return True
 
-    cur.close()
-    conn.close()
+# === Session Functions ===
+def create_session(username):
+    token = os.urandom(32).hex()
+    expires = datetime.utcnow() + timedelta(seconds=SESSION_TIMEOUT)
+    sessions[token] = {"username": username, "expires": expires}
+    return token
 
-    # === PLACEHOLDER: Integrate Live Bitcoin Wallet API here if needed ===
-    # e.g., update wallet balances, query wallet status, etc.
+def validate_session(token):
+    session = sessions.get(token)
+    if not session:
+        return False
+    if session["expires"] < datetime.utcnow():
+        del sessions[token]
+        return False
+    session["expires"] = datetime.utcnow() + timedelta(seconds=SESSION_TIMEOUT)
+    return True
 
-    return jsonify({"active_hash": total_hash})
+def get_username_from_session(token):
+    session = sessions.get(token)
+    if session:
+        return session["username"]
+    return None
 
-# === PLACEHOLDER: Integrate Ad Supplier API ===
-# For example, add a route or logic where users fetch or watch ads supplied by your ad provider.
-# This placeholder reminds you where to add code for ad API calls.
+# === Rotation Functions ===
+def update_visible_testimonies():
+    global visible_testimonies, rotation_index, used_indexes
+    n = len(testimonies)
+    if n == 0:
+        visible_testimonies = []
+        return
 
-# Example placeholder route:
-@app.route("/ads/fetch", methods=["GET"])
-def fetch_ads():
-    # TODO: Integrate your ads provider API here to return ads for the user
-    return jsonify({"message": "Ads API integration placeholder"})
+    if len(used_indexes) >= n:
+        used_indexes.clear()
+        rotation_index = 0
 
-from flask import send_from_directory
+    visible_testimonies = []
+    added = 0
+    i = rotation_index
 
-@app.route("/")
-def home():
-    return send_from_directory("static", "miner.html")
+    while added < VISIBLE_COUNT and len(used_indexes) < n:
+        idx = i % n
+        if idx not in used_indexes:
+            t = testimonies[idx].copy()
+            t["style"] = random.choice(STYLES)
+            t["animation"] = random.choice(ANIMATIONS)
+            t["timestamp"] = datetime.utcnow().isoformat() + "Z"
+            visible_testimonies.append(t)
+            used_indexes.add(idx)
+            added += 1
+        i += 1
 
-@app.route("/<path:filename>")
-def static_files(filename):
-    return send_from_directory("static", filename)
+    rotation_index = i % n
 
-# === RUN SERVER ===
-if __name__ == "__main__":
-    import pytz  # required for timezone logic in mining functions
-    init_db()    # make sure all tables are created
-    app.run(host="0.0.0.0", port=5000)
+def rotate_testimonies():
+    while True:
+        update_visible_testimonies()
+        time.sleep(ROTATION_INTERVAL)
+
+# === Email Function ===
+def send_testimony_email(data):
+    try:
+        print(f"[DEBUG] Sending email for: {data['name']}")
+        msg = EmailMessage()
+        msg['Subject'] = f"New Testimony from {data['name']}"
+        msg['From'] = EMAIL_FROM
+        msg['To'] = EMAIL_TO
+        msg.set_content(f"""
+New Testimony Submitted:
+
+Name: {data.get('name')}
+Country: {data.get('country')}
+Flag: {data.get('flag')}
+Message:
+{data.get('message')}
+""")
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as smtp:
+            smtp.starttls()
+            smtp.login(EMAIL_FROM, EMAIL_PASSWORD)
+            smtp.send_message(msg)
+        print("[DEBUG] Email sent successfully")
+        return True
+    except Exception as e:
+        print(f"[ERROR] Error sending email: {e}")
+        return False
+
+# === HTTP Handler ===
+class CORSRequestHandler(http.server.SimpleHTTPRequestHandler):
+    def end_headers(self):
+        origin = self.headers.get('Origin')
+        if origin:
+            self.send_header('Access-Control-Allow-Origin', origin)
+            self.send_header('Access-Control-Allow-Credentials', 'true')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Cookie')
+        super().end_headers()
+
+    def do_OPTIONS(self):
+        self.send_response(204)
+        self.end_headers()
+
+    def parse_cookies(self):
+        cookie_header = self.headers.get('Cookie')
+        cookies = {}
+        if cookie_header:
+            items = cookie_header.split(';')
+            for item in items:
+                if '=' in item:
+                    key, value = item.strip().split('=', 1)
+                    cookies[key] = value
+        return cookies
+
+    def require_auth(self):
+        cookies = self.parse_cookies()
+        token = cookies.get("session_token")
+        if token and validate_session(token):
+            return True
+        self.send_response(401)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps({"status": "error", "reason": "Unauthorized"}).encode('utf-8'))
+        return False
+
+    def do_GET(self):
+        if self.path == '/testimonies.json':
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps(visible_testimonies, indent=2).encode('utf-8'))
+
+        elif self.path == '/testimonies/full.json':
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps(testimonies, indent=2).encode('utf-8'))
+
+        elif self.path == '/admin/pending_testimonies':
+            if not self.require_auth():
+                return
+            pending = get_pending_testimonies()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps(pending, indent=2).encode('utf-8'))
+
+        else:
+            super().do_GET()
+
+    def do_POST(self):
+        if self.path == '/submit_testimony':
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            try:
+                data = json.loads(post_data.decode('utf-8'))
+                send_testimony_email(data)
+                add_pending_testimony(data)
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "success"}).encode('utf-8'))
+            except Exception as e:
+                self.send_response(500)
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "reason": str(e)}).encode('utf-8'))
+
+        elif self.path == '/admin/login':
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            try:
+                data = json.loads(post_data.decode('utf-8'))
+                username = data.get("username")
+                password = data.get("password")
+                if not username or not password:
+                    raise ValueError("Username and password required")
+
+                user = load_admin_user(username)
+                if user:
+                    stored_hash = user['password']
+                    if verify_password(stored_hash, password):
+                        token = create_session(username)
+                        self.send_response(200)
+                        self.send_header("Content-Type", "application/json")
+                        self.send_header("Set-Cookie", f"session_token={token}; Path=/; HttpOnly")
+                        self.end_headers()
+                        self.wfile.write(json.dumps({"status": "success"}).encode('utf-8'))
+                        return
+
+                self.send_response(401)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "reason": "Invalid credentials"}).encode('utf-8'))
+            except Exception as e:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "reason": str(e)}).encode('utf-8'))
+
+        elif self.path == '/admin/signup':
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            try:
+                data = json.loads(post_data.decode('utf-8'))
+                username = data.get("username")
+                password = data.get("password")
+                if not username or not password:
+                    raise ValueError("Username and password required")
+
+                existing_user = load_admin_user(username)
+                if existing_user:
+                    raise ValueError("Username already exists")
+
+                create_admin_user(username, password)
+
+                self.send_response(201)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "success"}).encode('utf-8'))
+            except Exception as e:
+                self.send_response(400)
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "reason": str(e)}).encode('utf-8'))
+
+        elif self.path == '/admin/update_testimony':
+            if not self.require_auth():
+                return
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            try:
+                data = json.loads(post_data.decode('utf-8'))
+                testimony_id = data.get("id")
+                action = data.get("action")
+                if testimony_id is None or action not in ("approve", "reject"):
+                    raise ValueError("Invalid data for update")
+
+                if action == "approve":
+                    success = approve_testimony(testimony_id)
+                    if not success:
+                        raise ValueError("Testimony ID not found")
+                    load_all_testimonies()
+                elif action == "reject":
+                    delete_pending_testimony(testimony_id)
+
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "success"}).encode('utf-8'))
+            except Exception as e:
+                self.send_response(500)
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "reason": str(e)}).encode('utf-8'))
+
+        elif self.path == '/admin/logout':
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Set-Cookie", "session_token=deleted; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT")
+            self.end_headers()
+            self.wfile.write(json.dumps({"status": "success"}).encode('utf-8'))
+
+        else:
+            self.send_response(404)
+            self.end_headers()
+            self.wfile.write(json.dumps({"status": "error", "reason": "Not found"}).encode('utf-8'))
+
+# === Start Server ===
+if __name__ == '__main__':
+    print("Setting up database tables...")
+    setup_tables()
+
+    print("Loading testimonies from DB...")
+    load_all_testimonies()
+    update_visible_testimonies()
+
+    print(f"Starting testimony rotation thread every {ROTATION_INTERVAL} seconds...")
+    threading.Thread(target=rotate_testimonies, daemon=True).start()
+
+    print(f"Serving HTTP on port {PORT} ...")
+    with socketserver.TCPServer(("", PORT), CORSRequestHandler) as httpd:
+        httpd.serve_forever()
