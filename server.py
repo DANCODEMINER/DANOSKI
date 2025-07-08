@@ -451,6 +451,151 @@ def reset_pin():
 
 # === MINING / AD WATCHING ===
 # === DASHBOARD ROUTES ===
+@app.route("/user/dashboard-summary", methods=["POST"])
+def dashboard_summary():
+    data = request.json
+    email = data.get("email")
+
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute("SELECT id FROM users WHERE email = %s", (email,))
+    user = cur.fetchone()
+    if not user:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "User not found"}), 404
+
+    user_id = user[0]
+
+    cur.execute("""
+        SELECT COUNT(*), COALESCE(SUM(CAST(SPLIT_PART(power, ' ', 1) AS FLOAT)), 0)
+        FROM user_hash_sessions
+        WHERE user_id = %s
+    """, (user_id,))
+    session_count, total_hash = cur.fetchone()
+
+    cur.execute("""
+        SELECT COALESCE(SUM(amount), 0)
+        FROM withdrawals
+        WHERE user_id = %s
+    """, (user_id,))
+    total_withdrawn = cur.fetchone()[0]
+
+    cur.close()
+    conn.close()
+
+    return jsonify({
+        "sessions": session_count,
+        "hashrate": f"{total_hash:.2f} Th/s",
+        "withdrawn": f"{total_withdrawn:.4f} BTC"
+    })
+
+
+@app.route("/user/withdraw-now", methods=["POST"])
+def withdraw_now():
+    data = request.json
+    email = data.get("email")
+
+    if not email:
+        return jsonify({"error": "Email is required."}), 400
+
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute("SELECT id FROM users WHERE email = %s", (email,))
+    user = cur.fetchone()
+    if not user:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "User not found."}), 404
+
+    user_id = user[0]
+
+    cur.execute("""
+        SELECT COALESCE(SUM(CAST(SPLIT_PART(power, ' ', 1) AS FLOAT)), 0)
+        FROM user_hash_sessions
+        WHERE user_id = %s
+    """, (user_id,))
+    total_hash = cur.fetchone()[0]
+    total_mined = total_hash * 0.00005
+
+    cur.execute("SELECT COALESCE(SUM(amount), 0) FROM withdrawals WHERE user_id = %s", (user_id,))
+    total_withdrawn = cur.fetchone()[0]
+
+    available = total_mined - total_withdrawn
+
+    if available < 0.0001:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Insufficient balance to withdraw."}), 403
+
+    try:
+        cur.execute("""
+            INSERT INTO withdrawals (user_id, amount, status)
+            VALUES (%s, %s, %s)
+        """, (user_id, available, "pending"))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        print("Withdraw error:", e)
+        return jsonify({"error": "Failed to process withdrawal."}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+    return jsonify({"message": f"Withdrawal of {available:.4f} BTC submitted!"})
+
+
+@app.route("/user/recent-hash-sessions", methods=["POST"])
+def recent_hash_sessions():
+    data = request.json
+    email = data.get("email")
+
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute("SELECT id FROM users WHERE email = %s", (email,))
+    user = cur.fetchone()
+    if not user:
+        cur.close()
+        conn.close()
+        return jsonify({"sessions": []})
+
+    user_id = user[0]
+
+    cur.execute("""
+        SELECT id, created_at, power, duration
+        FROM user_hash_sessions
+        WHERE user_id = %s
+        ORDER BY created_at DESC
+        LIMIT 10
+    """, (user_id,))
+
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    sessions = [{
+        "id": row[0],
+        "date": row[1].strftime("%Y-%m-%d %H:%M"),
+        "power": row[2],
+        "duration": row[3]
+    } for row in rows]
+
+    return jsonify({"sessions": sessions})
+
+
+@app.route("/user/top-miners", methods=["GET"])
+def top_miners():
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute
+
+# === MINING / AD WATCHING ===
+# === DASHBOARD ROUTES ===
+
 
 @app.route("/user/dashboard-summary", methods=["POST"])
 def dashboard_summary():
@@ -492,7 +637,8 @@ def dashboard_summary():
         "withdrawn": f"{total_withdrawn:.4f} BTC"
     })
 
-    @app.route("/user/withdraw-now", methods=["POST"])
+
+@app.route("/user/withdraw-now", methods=["POST"])
 def withdraw_now():
     data = request.json
     email = data.get("email")
@@ -503,7 +649,6 @@ def withdraw_now():
     conn = get_db()
     cur = conn.cursor()
 
-    # Get user ID
     cur.execute("SELECT id FROM users WHERE email = %s", (email,))
     user = cur.fetchone()
     if not user:
@@ -513,7 +658,6 @@ def withdraw_now():
 
     user_id = user[0]
 
-    # Calculate total mined
     cur.execute("""
         SELECT COALESCE(SUM(CAST(SPLIT_PART(power, ' ', 1) AS FLOAT)), 0)
         FROM user_hash_sessions
@@ -522,11 +666,9 @@ def withdraw_now():
     total_hash = cur.fetchone()[0]
     total_mined = total_hash * 0.00005
 
-    # Calculate total withdrawn
     cur.execute("SELECT COALESCE(SUM(amount), 0) FROM withdrawals WHERE user_id = %s", (user_id,))
     total_withdrawn = cur.fetchone()[0]
 
-    # Calculate available amount
     available = total_mined - total_withdrawn
 
     if available < 0.0001:
@@ -600,6 +742,11 @@ def top_miners():
         FROM users u
         JOIN user_hash_sessions s ON u.id = s.user_id
         GROUP BY u.id
+("""
+        SELECT u.full_name, SUM(CAST(SPLIT_PART(s.power, ' ', 1) AS FLOAT)) AS total_hash
+        FROM users u
+        JOIN user_hash_sessions s ON u.id = s.user_id
+        GROUP BY u.id
         ORDER BY total_hash DESC
         LIMIT 10
     """)
@@ -610,114 +757,7 @@ def top_miners():
 
     miners = [{
         "user": row[0],
-        "hashrate": f"{row[1]:.2f} Th/s",
-        "btc": f"{(row[1] * 0.00005):.4f}"  # simulate BTC reward
-    } for row in rows]
-
-    return jsonify({"miners": miners})
-
-
-@app.route("/user/my-rank", methods=["POST"])
-def my_rank():
-    data = request.json
-    email = data.get("email")
-
-    conn = get_db()
-    cur = conn.cursor()
-
-    # Calculate total hash for user
-    cur.execute("""
-        SELECT id FROM users WHERE email = %s
-    """, (email,))
-    user = cur.fetchone()
-    if not user:
-        cur.close()
-        conn.close()
-        return jsonify({"rank": "--", "btc": "--", "hashrate": "--"})
-
-    user_id = user[0]
-
-    cur.execute("""
-        SELECT user_id, SUM(CAST(SPLIT_PART(power, ' ', 1) AS FLOAT)) AS total_hash
-        FROM user_hash_sessions
-        GROUP BY user_id
-        ORDER BY total_hash DESC
-    """)
-    all_rows = cur.fetchall()
-
-    rank = 1
-    user_total = 0
-    for uid, thash in all_rows:
-        if uid == user_id:
-            user_total = thash
-            break
-        rank += 1
-
-    cur.close()
-    conn.close()
-
-    return jsonify({
-        "rank": rank,
-        "btc": f"{(user_total * 0.00005):.4f}",
-        "hashrate": f"{user_total:.2f} Th/s"
-    })
-
-
-@app.route("/user/next-withdrawal-date", methods=["GET"])
-def next_withdrawal_date():
-    from datetime import datetime, timedelta
-    next_date = (datetime.utcnow() + timedelta(days=1)).strftime("%B %d, %Y")
-    return jsonify({"next_date": next_date})
-
-
-@app.route("/user/dashboard-messages", methods=["GET"])
-def dashboard_messages():
-    messages = [
-        "✅ Watch ads daily to boost your hash rate rewards!",
-        "⚠️ Withdrawals are processed every 24 hours. Make sure your wallet is active."
-    ]
-    return jsonify({"messages": messages})
-
-
-@app.route("/user/watch-ad", methods=["POST"])
-def watch_ad():
-    data = request.json
-    email = data.get("email")
-
-    if not email:
-        return jsonify({"error": "Email is required."}), 400
-
-    conn = get_db()
-    cur = conn.cursor()
-
-    cur.execute("SELECT id FROM users WHERE email = %s", (email,))
-    user = cur.fetchone()
-    if not user:
-        cur.close()
-        conn.close()
-        return jsonify({"error": "User not found."}), 404
-
-    user_id = user[0]
-
-    power = f"{random.uniform(1.5, 3.0):.2f} Th/s"
-    duration = f"{random.randint(5, 15)} mins"
-
-    try:
-        cur.execute("""
-            INSERT INTO user_hash_sessions (user_id, power, duration)
-            VALUES (%s, %s, %s)
-        """, (user_id, power, duration))
-        conn.commit()
-    except Exception as e:
-        conn.rollback()
-        print("Watch ad error:", e)
-        return jsonify({"error": "Could not record ad session."}), 500
-    finally:
-        cur.close()
-        conn.close()
-
-    return jsonify({"message": "Hash session logged after ad watch."})
-
+        "hashrate": f"{row[1]:.2f} 
 
 @app.route("/user/logout", methods=["POST"])
 def logout():
