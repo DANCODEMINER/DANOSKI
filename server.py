@@ -201,7 +201,6 @@ def convert_utc_to_local(dt, timezone_str):
     return dt.replace(tzinfo=utc).astimezone(local_tz)
 
 # === USER SIGNUP ===
-
 @app.route("/user/create-account", methods=["POST"])
 def create_account():
     data = request.json
@@ -236,7 +235,7 @@ def create_account():
     try:
         cur.execute(
             """
-            INSERT INTO users (full_name, country, email, password, pin, verified)
+            INSERT INTO users (full_name, country, email, password, pin, email_verified)
             VALUES (%s, %s, %s, %s, %s, TRUE)
             """,
             (full_name, country, email, hashed_password, pin)
@@ -253,6 +252,7 @@ def create_account():
     conn.close()
 
     return jsonify({"message": "Account created successfully."})
+
     
 @app.route("/user/verify-otp", methods=["POST"])
 def verify_otp():
