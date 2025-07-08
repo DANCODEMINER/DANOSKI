@@ -15,122 +15,138 @@ EMAIL_PASSWORD = "zfvn fves admc cgwr"
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 SITE_NAME = "Adchain Miner"
-DATABASE_URL = os.getenv("DATABASE_URL")  # Make sure to set this env var in your deployment
+DATABASE_URL = os.getenv("DATABASE_URL")  # Must be set in your deployment environment
 
+# === APP INITIALIZATION ===
 app = Flask(__name__)
 CORS(app)
 
-# === DB SETUP ===
-
+# === DATABASE CONNECTION FUNCTION ===
 def get_db():
     return psycopg2.connect(DATABASE_URL)
 
+# === DATABASE TABLE CREATION ===
 def init_db():
     conn = get_db()
     cur = conn.cursor()
-    # Users table
-cur.execute('''
-CREATE TABLE IF NOT EXISTS users (
-    id SERIAL PRIMARY KEY,
-    full_name TEXT NOT NULL,
-    country TEXT NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL,
-    pin TEXT NOT NULL,
-    email_verified BOOLEAN DEFAULT FALSE,
-    last_login TIMESTAMP,
-    failed_login_attempts INTEGER DEFAULT 0,
-    lockout_until TIMESTAMP,
-    role TEXT DEFAULT 'user',
-    suspended BOOLEAN DEFAULT FALSE,
-    deleted BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-''')
 
-cur.execute('''
-CREATE TABLE IF NOT EXISTS admins (
-    id SERIAL PRIMARY KEY,
-    username TEXT UNIQUE NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-''')
+    # === USERS TABLE ===
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            full_name TEXT NOT NULL,
+            country TEXT NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            pin TEXT NOT NULL,
+            email_verified BOOLEAN DEFAULT FALSE,
+            last_login TIMESTAMP,
+            failed_login_attempts INTEGER DEFAULT 0,
+            lockout_until TIMESTAMP,
+            role TEXT DEFAULT 'user',
+            suspended BOOLEAN DEFAULT FALSE,
+            deleted BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    ''')
 
-cur.execute('''
-CREATE TABLE IF NOT EXISTS otps (
-    id SERIAL PRIMARY KEY,
-    email TEXT NOT NULL,
-    code TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    for_admin BOOLEAN DEFAULT FALSE
-);
-''')
+    # === ADMINS TABLE ===
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS admins (
+            id SERIAL PRIMARY KEY,
+            username TEXT UNIQUE NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    ''')
 
-cur.execute('''
-CREATE TABLE IF NOT EXISTS user_logs (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id),
-    action TEXT,
-    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-''')
+    # === OTPS TABLE ===
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS otps (
+            id SERIAL PRIMARY KEY,
+            email TEXT NOT NULL,
+            code TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            for_admin BOOLEAN DEFAULT FALSE
+        );
+    ''')
 
-cur.execute('''
-CREATE TABLE IF NOT EXISTS withdrawals (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id),
-    amount NUMERIC,
-    wallet TEXT,
-    status TEXT DEFAULT 'pending',
-    fee NUMERIC DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-''')
+    # === USER LOGS TABLE ===
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS user_logs (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            action TEXT NOT NULL,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    ''')
 
-cur.execute('''
-CREATE TABLE IF NOT EXISTS system_settings (
-    id SERIAL PRIMARY KEY,
-    auto_withdraw_date DATE
-);
-''')
+    # === WITHDRAWALS TABLE ===
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS withdrawals (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            amount NUMERIC NOT NULL,
+            wallet TEXT NOT NULL,
+            status TEXT DEFAULT 'pending',
+            fee NUMERIC DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    ''')
 
-cur.execute('''
-CREATE TABLE IF NOT EXISTS user_hash_sessions (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER,
-    hash_amount INTEGER,
-    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-''')
+    # === SYSTEM SETTINGS TABLE ===
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS system_settings (
+            id SERIAL PRIMARY KEY,
+            auto_withdraw_date DATE
+        );
+    ''')
 
-cur.execute('''
-CREATE TABLE IF NOT EXISTS mining_settings (
-    hash_per_ad INTEGER,
-    btc_per_hash NUMERIC
-);
-''')
+    # === HASH SESSIONS TABLE ===
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS user_hash_sessions (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            hash_amount INTEGER NOT NULL,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    ''')
 
-cur.execute('''
-CREATE TABLE IF NOT EXISTS central_wallet (
-    id SERIAL PRIMARY KEY,
-    btc_balance NUMERIC DEFAULT 0
-);
-''')
+    # === MINING SETTINGS TABLE ===
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS mining_settings (
+            id SERIAL PRIMARY KEY,
+            hash_per_ad INTEGER DEFAULT 0,
+            btc_per_hash NUMERIC DEFAULT 0
+        );
+    ''')
 
-cur.execute('''
-CREATE TABLE IF NOT EXISTS wallet_settings (
-    id SERIAL PRIMARY KEY,
-    withdraw_fee_btc NUMERIC DEFAULT 0
-);
-''')
+    # === CENTRAL WALLET TABLE ===
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS central_wallet (
+            id SERIAL PRIMARY KEY,
+            btc_balance NUMERIC DEFAULT 0
+        );
+    ''')
 
-conn.commit()
-cur.close()
-conn.close()
+    # === WALLET SETTINGS TABLE ===
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS wallet_settings (
+            id SERIAL PRIMARY KEY,
+            withdraw_fee_btc NUMERIC DEFAULT 0
+        );
+    ''')
 
+    conn.commit()
+    cur.close()
+    conn.close()
+
+# === RUN TABLE SETUP AT STARTUP ===
+init_db()
+
+# === You can now add routes below (like signup, login, etc.) ===
 
 # === UTILITIES ===
 
