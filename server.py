@@ -19,7 +19,7 @@ DATABASE_URL = os.getenv("DATABASE_URL")  # Must be set in your deployment envir
 
 # === APP INITIALIZATION ===
 app = Flask(__name__)
-CORS(app)
+CORS(app, supports_credentials=True)
 
 # === DATABASE CONNECTION FUNCTION ===
 def get_db():
