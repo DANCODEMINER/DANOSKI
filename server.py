@@ -29,119 +29,102 @@ def init_db():
     conn = get_db()
     cur = conn.cursor()
     # Users table
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            full_name TEXT,
-            country TEXT,
-            email TEXT UNIQUE,
-            password TEXT,
-            pin TEXT,
-            hash_rate INTEGER DEFAULT 0,
-            mined_btc NUMERIC DEFAULT 0,
-            withdrawn_btc NUMERIC DEFAULT 0,
-            wallet_address TEXT,
-            verified BOOLEAN DEFAULT FALSE,
-            timezone TEXT,
-            suspended BOOLEAN DEFAULT FALSE,
-            deleted BOOLEAN DEFAULT FALSE,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-    ''')
-
-    cur.execute('''
-    CREATE TABLE IF NOT EXISTS user_logs (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id),
-        action TEXT,
-        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
+cur.execute('''
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    full_name TEXT NOT NULL,
+    country TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    pin TEXT NOT NULL,
+    email_verified BOOLEAN DEFAULT FALSE,
+    last_login TIMESTAMP,
+    failed_login_attempts INTEGER DEFAULT 0,
+    lockout_until TIMESTAMP,
+    role TEXT DEFAULT 'user',
+    suspended BOOLEAN DEFAULT FALSE,
+    deleted BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 ''')
 
-    # Admins table
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS admins (
-            id SERIAL PRIMARY KEY,
-            username TEXT UNIQUE,
-            email TEXT UNIQUE,
-            password TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-    ''')
+cur.execute('''
+CREATE TABLE IF NOT EXISTS admins (
+    id SERIAL PRIMARY KEY,
+    username TEXT UNIQUE NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+''')
 
-    # OTPs table
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS otps (
-            id SERIAL PRIMARY KEY,
-            email TEXT,
-            code TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            for_admin BOOLEAN DEFAULT FALSE
-        );
-    ''')
+cur.execute('''
+CREATE TABLE IF NOT EXISTS otps (
+    id SERIAL PRIMARY KEY,
+    email TEXT NOT NULL,
+    code TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    for_admin BOOLEAN DEFAULT FALSE
+);
+''')
 
-    # Withdrawals table
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS withdrawals (
-            id SERIAL PRIMARY KEY,
-            user_id INTEGER REFERENCES users(id),
-            amount NUMERIC,
-            wallet TEXT,
-            status TEXT DEFAULT 'pending',
-            fee NUMERIC DEFAULT 0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-    ''')
+cur.execute('''
+CREATE TABLE IF NOT EXISTS user_logs (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    action TEXT,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+''')
 
-    # System settings table
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS system_settings (
-            id SERIAL PRIMARY KEY,
-            auto_withdraw_date DATE
-        );
-    ''')
+cur.execute('''
+CREATE TABLE IF NOT EXISTS withdrawals (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    amount NUMERIC,
+    wallet TEXT,
+    status TEXT DEFAULT 'pending',
+    fee NUMERIC DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+''')
 
-    # User hash sessions table
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS user_hash_sessions (
-            id SERIAL PRIMARY KEY,
-            user_id INTEGER,
-            hash_amount INTEGER,
-            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-    ''')
+cur.execute('''
+CREATE TABLE IF NOT EXISTS system_settings (
+    id SERIAL PRIMARY KEY,
+    auto_withdraw_date DATE
+);
+''')
 
-    # Mining settings table
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS mining_settings (
-            hash_per_ad INTEGER,
-            btc_per_hash NUMERIC
-        );
-    ''')
+cur.execute('''
+CREATE TABLE IF NOT EXISTS user_hash_sessions (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER,
+    hash_amount INTEGER,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+''')
 
-    # Central wallet table (live Bitcoin wallet balance tracking)
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS central_wallet (
-            id SERIAL PRIMARY KEY,
-            btc_balance NUMERIC DEFAULT 0
-        );
-    ''')
+cur.execute('''
+CREATE TABLE IF NOT EXISTS mining_settings (
+    hash_per_ad INTEGER,
+    btc_per_hash NUMERIC
+);
+''')
 
-    # Wallet settings table (withdrawal fees, etc.)
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS wallet_settings (
-            id SERIAL PRIMARY KEY,
-            withdraw_fee_btc NUMERIC DEFAULT 0
-        );
-    ''')
+cur.execute('''
+CREATE TABLE IF NOT EXISTS central_wallet (
+    id SERIAL PRIMARY KEY,
+    btc_balance NUMERIC DEFAULT 0
+);
+''')
 
-    cur.execute('''
-    CREATE TABLE IF NOT EXISTS user_logs (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id),
-        action TEXT,
-        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
+cur.execute('''
+CREATE TABLE IF NOT EXISTS wallet_settings (
+    id SERIAL PRIMARY KEY,
+    withdraw_fee_btc NUMERIC DEFAULT 0
+);
 ''')
 
     conn.commit()
@@ -202,39 +185,58 @@ def convert_utc_to_local(dt, timezone_str):
 
 # === USER SIGNUP ===
 
-@app.route("/user/signup", methods=["POST"])
-def user_signup():
+@app.route("/user/create-account", methods=["POST"])
+def create_account():
     data = request.json
+
     full_name = data.get("full_name")
     country = data.get("country")
     email = data.get("email")
     password = data.get("password")
+    pin = data.get("pin")
 
-    if not strong_password(password):
-        return jsonify({"error": "Weak password. Use alphanumeric and symbol (min 6 chars)."}), 400
+    # Validate all required fields
+    if not all([full_name, country, email, password, pin]):
+        return jsonify({"error": "All fields including PIN are required."}), 400
 
-    # Check if email already exists
+    # Validate PIN format (4 digits)
+    if not pin.isdigit() or len(pin) != 4:
+        return jsonify({"error": "PIN must be a 4-digit number."}), 400
+
+    # Hash password securely
+    hashed_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
     conn = get_db()
     cur = conn.cursor()
+
+    # Check if email already exists
     cur.execute("SELECT id FROM users WHERE email = %s", (email,))
     if cur.fetchone():
         cur.close()
         conn.close()
-        return jsonify({"error": "Email already registered."}), 400
+        return jsonify({"error": "Email already registered."}), 409
 
-    hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
-    otp = generate_otp()
+    try:
+        cur.execute(
+            """
+            INSERT INTO users (full_name, country, email, password, pin, verified)
+            VALUES (%s, %s, %s, %s, %s, TRUE)
+            """,
+            (full_name, country, email, hashed_password, pin)
+        )
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        cur.close()
+        conn.close()
+        print("Create account error:", e)
+        return jsonify({"error": "Failed to create account."}), 500
 
-    # Save OTP for this email
-    cur.execute("INSERT INTO otps (email, code) VALUES (%s, %s)", (email, otp))
-    conn.commit()
     cur.close()
     conn.close()
 
-    # Send OTP email
-    send_otp(email, otp)
-    return jsonify({"message": "OTP sent to email."})
-
+    return jsonify({"message": "Account created successfully."})
+    
 @app.route("/user/verify-otp", methods=["POST"])
 def verify_otp():
     data = request.json
@@ -332,31 +334,38 @@ def user_login():
         email = data.get("email")
         password = data.get("password")
 
+        if not email or not password:
+            return jsonify({"error": "Email and password are required."}), 400
+
         conn = get_db()
         cur = conn.cursor()
-        cur.execute("SELECT id, password, full_name, country FROM users WHERE email = %s", (email,))
+        cur.execute("SELECT id, password, full_name, country FROM users WHERE email = %s AND deleted = FALSE AND suspended = FALSE", (email,))
         user = cur.fetchone()
 
-        if user:
-            user_id, db_password, full_name, country = user
+        if not user:
+            cur.close()
+            conn.close()
+            return jsonify({"error": "Invalid email or password."}), 401
 
-            if bcrypt.checkpw(password.encode(), db_password.encode()):
-                cur.close()
-                conn.close()
-                return jsonify({
-                    "message": "Login successful",
-                    "id": user_id,
-                    "full_name": full_name,
-                    "country": country
-                })
+        user_id, db_password, full_name, country = user
+
+        if not bcrypt.checkpw(password.encode(), db_password.encode()):
+            cur.close()
+            conn.close()
+            return jsonify({"error": "Invalid email or password."}), 401
 
         cur.close()
         conn.close()
-        return jsonify({"error": "Invalid email or password"}), 401
 
+        return jsonify({
+            "message": "Login successful.",
+            "id": user_id,
+            "full_name": full_name,
+            "country": country
+        })
     except Exception as e:
         print("Login error:", e)
-        return jsonify({"error": "Internal server error"}), 500
+        return jsonify({"error": "Internal server error."}), 500
         
 @app.route("/user/verify-login-pin", methods=["POST"])
 def verify_login_pin():
