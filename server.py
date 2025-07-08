@@ -431,9 +431,13 @@ def reset_pin():
     conn = get_db()
     cur = conn.cursor()
     cur.execute("UPDATE users SET pin = %s WHERE email = %s", (pin, email))
+    rows_updated = cur.rowcount
     conn.commit()
     cur.close()
     conn.close()
+
+    if rows_updated == 0:
+        return jsonify({"error": "Email not found. PIN not updated."}), 404
 
     return jsonify({"message": "PIN reset successful."})
 
