@@ -548,6 +548,18 @@ def my_rank():
         "hashrate": f"{user_total:.2f} Th/s"
     })
 
+@app.route("/user/dashboard-messages", methods=["GET"])
+def dashboard_messages():
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT message FROM dashboard_messages ORDER BY created_at DESC LIMIT 10")
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    messages = [row[0] for row in rows]
+    return jsonify({"messages": messages})
+
 @app.route("/user/recent-hash-sessions", methods=["POST"])
 def recent_hash_sessions():
     data = request.json
