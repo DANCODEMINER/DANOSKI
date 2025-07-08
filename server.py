@@ -548,35 +548,43 @@ def my_rank():
         "hashrate": f"{user_total:.2f} Th/s"
     })
 
-@app.route("/user/hash-sessions", methods=["GET"])
-def hash_sessions():
-    email = request.args.get("email")
+@app.route("/user/recent-hash-sessions", methods=["POST"])
+def recent_hash_sessions():
+    data = request.json
+    email = data.get("email")
 
     conn = get_db()
     cur = conn.cursor()
-    cur.execute("SELECT id, timezone FROM users WHERE email = %s", (email,))
+
+    cur.execute("SELECT id FROM users WHERE email = %s", (email,))
     user = cur.fetchone()
     if not user:
         cur.close()
         conn.close()
-        return jsonify({"error": "User not found."}), 404
+        return jsonify({"sessions": []})
 
-    user_id, tz = user
+    user_id = user[0]
 
-    cur.execute("SELECT hash_amount, timestamp FROM user_hash_sessions WHERE user_id = %s ORDER BY timestamp DESC", (user_id,))
-    sessions = cur.fetchall()
+    cur.execute("""
+        SELECT id, created_at, power, duration
+        FROM user_hash_sessions
+        WHERE user_id = %s
+        ORDER BY created_at DESC
+        LIMIT 10
+    """, (user_id,))
+
+    rows = cur.fetchall()
     cur.close()
     conn.close()
 
-    result = []
-    for hash_amount, ts in sessions:
-        local_ts = ts.replace(tzinfo=pytz.utc).astimezone(pytz.timezone(tz))
-        result.append({
-            "hash": hash_amount,
-            "timestamp": local_ts.strftime("%Y-%m-%d %H:%M:%S")
-        })
+    sessions = [{
+        "id": row[0],
+        "date": row[1].strftime("%Y-%m-%d %H:%M"),
+        "power": row[2],
+        "duration": row[3]
+    } for row in rows]
 
-    return jsonify(result)
+    return jsonify({"sessions": sessions})
 
 # === ADMIN OTP REQUEST ===
 @app.route("/admin/request-otp", methods=["POST"])
