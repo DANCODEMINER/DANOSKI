@@ -480,6 +480,32 @@ def watch_ad():
 
     return jsonify({"message": "Hash session logged after ad watch."})
 
+@app.route("/user/top-miners", methods=["GET"])
+def top_miners():
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT u.full_name, SUM(CAST(SPLIT_PART(s.power, ' ', 1) AS FLOAT)) AS total_hash
+        FROM users u
+        JOIN user_hash_sessions s ON u.id = s.user_id
+        GROUP BY u.id
+        ORDER BY total_hash DESC
+        LIMIT 10
+    """)
+    rows = cur.fetchall()
+
+    cur.close()
+    conn.close()
+
+    miners = [{
+        "user": row[0],
+        "hashrate": f"{row[1]:.2f} Th/s",
+        "btc": f"{(row[1] * 0.00005):.4f}"
+    } for row in rows]
+
+    return jsonify({"miners": miners})
+
 @app.route("/user/hash-sessions", methods=["GET"])
 def hash_sessions():
     email = request.args.get("email")
