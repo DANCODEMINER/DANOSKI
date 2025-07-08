@@ -124,12 +124,14 @@ cur.execute('''
 CREATE TABLE IF NOT EXISTS wallet_settings (
     id SERIAL PRIMARY KEY,
     withdraw_fee_btc NUMERIC DEFAULT 0
+    
 );
 ''')
 
     conn.commit()
     cur.close()
     conn.close()
+
 
 # === UTILITIES ===
 
