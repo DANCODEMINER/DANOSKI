@@ -492,6 +492,64 @@ def dashboard_summary():
         "withdrawn": f"{total_withdrawn:.4f} BTC"
     })
 
+    @app.route("/user/withdraw-now", methods=["POST"])
+def withdraw_now():
+    data = request.json
+    email = data.get("email")
+
+    if not email:
+        return jsonify({"error": "Email is required."}), 400
+
+    conn = get_db()
+    cur = conn.cursor()
+
+    # Get user ID
+    cur.execute("SELECT id FROM users WHERE email = %s", (email,))
+    user = cur.fetchone()
+    if not user:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "User not found."}), 404
+
+    user_id = user[0]
+
+    # Calculate total mined
+    cur.execute("""
+        SELECT COALESCE(SUM(CAST(SPLIT_PART(power, ' ', 1) AS FLOAT)), 0)
+        FROM user_hash_sessions
+        WHERE user_id = %s
+    """, (user_id,))
+    total_hash = cur.fetchone()[0]
+    total_mined = total_hash * 0.00005
+
+    # Calculate total withdrawn
+    cur.execute("SELECT COALESCE(SUM(amount), 0) FROM withdrawals WHERE user_id = %s", (user_id,))
+    total_withdrawn = cur.fetchone()[0]
+
+    # Calculate available amount
+    available = total_mined - total_withdrawn
+
+    if available < 0.0001:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Insufficient balance to withdraw."}), 403
+
+    try:
+        cur.execute("""
+            INSERT INTO withdrawals (user_id, amount, status)
+            VALUES (%s, %s, %s)
+        """, (user_id, available, "pending"))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        print("Withdraw error:", e)
+        return jsonify({"error": "Failed to process withdrawal."}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+    return jsonify({"message": f"Withdrawal of {available:.4f} BTC submitted!"})
+
 
 @app.route("/user/recent-hash-sessions", methods=["POST"])
 def recent_hash_sessions():
