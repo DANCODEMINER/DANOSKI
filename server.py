@@ -200,11 +200,242 @@ def convert_utc_to_local(dt, timezone_str):
     local_tz = pytz.timezone(timezone_str)
     return dt.replace(tzinfo=utc).astimezone(local_tz)
 
-# === USER SIGNUP ===
+# === ROUTES ===
+
+@app.route("/user/send-otp", methods=["POST"])
+def send_otp_route():
+    data = request.json
+    email = data.get("email")
+    otp = generate_otp()
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO otps (email, code)
+            VALUES (%s, %s)
+            ON CONFLICT (email) DO UPDATE SET code = EXCLUDED.code, created_at = CURRENT_TIMESTAMP
+        """, (email, otp))
+        conn.commit()
+        cur.close()
+        conn.close()
+        send_otp(email, otp)
+        return jsonify({"message": "OTP sent successfully."})
+    except Exception as e:
+        print("OTP error:", e)
+        return jsonify({"error": "Failed to send OTP."}), 500
 
 
+@app.route("/user/verify-otp", methods=["POST"])
+def verify_otp():
+    data = request.json
+    email = data.get("email")
+    otp = data.get("otp")
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT code FROM otps WHERE email = %s", (email,))
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if row and row[0] == otp:
+        return jsonify({"message": "OTP verified."})
+    return jsonify({"error": "Invalid OTP."}), 400
 
 
+@app.route("/user/create-account", methods=["POST"])
+def create_account():
+    data = request.json
+    full_name = data.get("full_name")
+    country = data.get("country")
+    email = data.get("email")
+    password = data.get("password")
+    pin = data.get("pin")
+
+    if not all([full_name, country, email, password, pin]):
+        return jsonify({"error": "All fields required."}), 400
+
+    hashed_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM users WHERE email = %s", (email,))
+    if cur.fetchone():
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Email already registered."}), 409
+
+    try:
+        cur.execute("""
+            INSERT INTO users (full_name, country, email, password, pin, email_verified)
+            VALUES (%s, %s, %s, %s, %s, TRUE)
+        """, (full_name, country, email, hashed_password, pin))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        print("Create account error:", e)
+        return jsonify({"error": "Account creation failed."}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+    return jsonify({"message": "Account created successfully."})
+
+
+@app.route("/user/login", methods=["POST"])
+def login():
+    data = request.json
+    email = data.get("email")
+    password = data.get("password")
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT password FROM users WHERE email = %s", (email,))
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if row and bcrypt.checkpw(password.encode(), row[0].encode()):
+        return jsonify({"message": "Login successful."})
+    return jsonify({"error": "Invalid credentials."}), 401
+
+
+@app.route("/user/verify-login-pin", methods=["POST"])
+def verify_login_pin():
+    data = request.json
+    email = data.get("email")
+    pin = data.get("pin")
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT pin FROM users WHERE email = %s", (email,))
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if row and row[0] == pin:
+        return jsonify({"message": "PIN verified."})
+    return jsonify({"error": "Incorrect PIN."}), 401
+
+
+@app.route("/user/forgot-password", methods=["POST"])
+def forgot_password():
+    data = request.json
+    email = data.get("email")
+    otp = generate_otp()
+
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO otps (email, code)
+            VALUES (%s, %s)
+            ON CONFLICT (email) DO UPDATE SET code = EXCLUDED.code, created_at = CURRENT_TIMESTAMP
+        """, (email, otp))
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        send_otp(email, otp)
+        return jsonify({"message": "OTP sent."})
+    except Exception as e:
+        print("Forgot password error:", e)
+        return jsonify({"error": "Could not send OTP."}), 500
+
+
+@app.route("/user/verify-password-otp", methods=["POST"])
+def verify_password_otp():
+    data = request.json
+    email = data.get("email")
+    otp = data.get("otp")
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT code FROM otps WHERE email = %s", (email,))
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if row and row[0] == otp:
+        return jsonify({"message": "OTP verified."})
+    return jsonify({"error": "Invalid OTP."}), 400
+
+
+@app.route("/user/reset-password", methods=["POST"])
+def reset_password():
+    data = request.json
+    email = data.get("email")
+    password = data.get("password")
+
+    hashed_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("UPDATE users SET password = %s WHERE email = %s", (hashed_password, email))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    return jsonify({"message": "Password reset successful."})
+
+
+@app.route("/user/sendresetpin", methods=["POST"])
+def send_reset_pin():
+    data = request.json
+    email = data.get("email")
+    otp = generate_otp()
+
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO otps (email, code)
+            VALUES (%s, %s)
+            ON CONFLICT (email) DO UPDATE SET code = EXCLUDED.code, created_at = CURRENT_TIMESTAMP
+        """, (email, otp))
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        send_otp(email, otp)
+        return jsonify({"message": "OTP sent to reset PIN."})
+    except Exception as e:
+        print("Send reset pin error:", e)
+        return jsonify({"error": "Could not send OTP."}), 500
+
+
+@app.route("/user/verify-pin-otp", methods=["POST"])
+def verify_pin_otp():
+    data = request.json
+    email = data.get("email")
+    otp = data.get("otp")
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT code FROM otps WHERE email = %s", (email,))
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if row and row[0] == otp:
+        return jsonify({"message": "OTP verified."})
+    return jsonify({"error": "Invalid OTP."}), 400
+
+
+@app.route("/user/reset-pin", methods=["POST"])
+def reset_pin():
+    data = request.json
+    email = data.get("email")
+    pin = data.get("pin")
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("UPDATE users SET pin = %s WHERE email = %s", (pin, email))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    return jsonify({"message": "PIN reset successful."})
 
 # === MINING / AD WATCHING ===
 
