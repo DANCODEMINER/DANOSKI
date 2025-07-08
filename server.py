@@ -243,6 +243,10 @@ def verify_otp():
     return jsonify({"error": "Invalid OTP."}), 400
 
 
+@app.route("/user/watch-ad", methods=["POST"])
+def watch_ad():
+    return jsonify({"message": "Ad watched successfully!"})
+    
 @app.route("/user/create-account", methods=["POST"])
 def create_account():
     data = request.json
