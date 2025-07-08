@@ -272,6 +272,56 @@ def verify_otp():
     conn.close()
     return jsonify({"message": "OTP verified. Proceed to set PIN."})
 
+@app.route("/user/send-otp", methods=["POST"])
+def send_otp():
+    data = request.json
+    email = data.get("email")
+
+    if not email:
+        return jsonify({"error": "Email is required."}), 400
+
+    # Generate 6-digit OTP
+    otp = str(random.randint(100000, 999999))
+
+    # Save or update OTP in the database
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+
+        # Remove any previous OTP for this email
+        cur.execute("DELETE FROM otps WHERE email = %s AND for_admin = FALSE", (email,))
+        # Insert new OTP
+        cur.execute(
+            "INSERT INTO otps (email, code, for_admin) VALUES (%s, %s, FALSE)",
+            (email, otp)
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print("Error saving OTP:", e)
+        return jsonify({"error": "Could not generate OTP."}), 500
+
+    # Send OTP via email
+    try:
+        subject = f"{SITE_NAME} Email Verification Code"
+        body = f"Your OTP verification code is: {otp}\n\nDo not share this code with anyone.\n\n- {SITE_NAME} Team"
+        msg = MIMEText(body)
+        msg["Subject"] = subject
+        msg["From"] = EMAIL_FROM
+        msg["To"] = email
+
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.starttls()
+        server.login(EMAIL_FROM, EMAIL_PASSWORD)
+        server.sendmail(EMAIL_FROM, email, msg.as_string())
+        server.quit()
+
+        return jsonify({"message": "OTP sent to email successfully."})
+    except Exception as e:
+        print("Email sending error:", e)
+        return jsonify({"error": "Failed to send OTP to email."}), 500
+
 
 @app.route("/user/verify-password-otp", methods=["POST"])
 def verify_password_otp():
