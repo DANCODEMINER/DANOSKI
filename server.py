@@ -272,37 +272,6 @@ def verify_otp():
     conn.close()
     return jsonify({"message": "OTP verified. Proceed to set PIN."})
 
-@app.route("/user/create-account", methods=["POST"])
-def create_account():
-    data = request.json
-    full_name = data.get("full_name")
-    country = data.get("country")
-    email = data.get("email")
-    password = data.get("password")
-    pin = data.get("pin")
-
-    if not all([full_name, country, email, password, pin]):
-        return jsonify({"error": "All fields including PIN are required."}), 400
-
-    hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()  # ✅ decode added
-
-    conn = get_db()
-    cur = conn.cursor()
-    try:
-        cur.execute(
-            "INSERT INTO users (full_name, country, email, password, pin, verified) VALUES (%s, %s, %s, %s, %s, TRUE)",
-            (full_name, country, email, hashed, pin)
-        )
-        conn.commit()
-    except Exception as e:
-        conn.rollback()
-        cur.close()
-        conn.close()
-        return jsonify({"error": "Failed to create account."}), 500
-
-    cur.close()
-    conn.close()
-    return jsonify({"message": "Account created successfully."})
 
 @app.route("/user/verify-password-otp", methods=["POST"])
 def verify_password_otp():
