@@ -428,18 +428,26 @@ def reset_pin():
     email = data.get("email")
     pin = data.get("pin")
 
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("UPDATE users SET pin = %s WHERE email = %s", (pin, email))
-    rows_updated = cur.rowcount
-    conn.commit()
-    cur.close()
-    conn.close()
+    print("Resetting PIN for:", email, pin)
 
-    if rows_updated == 0:
-        return jsonify({"error": "Email not found. PIN not updated."}), 404
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("UPDATE users SET pin = %s WHERE email = %s", (pin, email))
+        updated = cur.rowcount
+        conn.commit()
+        cur.close()
+        conn.close()
 
-    return jsonify({"message": "PIN reset successful."})
+        print("Rows updated:", updated)
+
+        if updated == 0:
+            return jsonify({"error": "Email not found or no changes made."}), 404
+
+        return jsonify({"message": "PIN reset successful."})
+    except Exception as e:
+        print("Error during PIN reset:", e)
+        return jsonify({"error": "Failed to reset PIN."}), 500
 
 # === MINING / AD WATCHING ===
 
