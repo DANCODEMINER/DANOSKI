@@ -451,73 +451,6 @@ def reset_pin():
 
 # === MINING / AD WATCHING ===
 
-@app.route("/user/watch-ad", methods=["POST"])
-def watch_ad():
-    data = request.json
-    email = data.get("email")
-
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("SELECT id FROM users WHERE email = %s", (email,))
-    user = cur.fetchone()
-    if not user:
-        cur.close()
-        conn.close()
-        return jsonify({"error": "User not found."}), 404
-
-    user_id = user[0]
-    
-    log_user_action(user_id, "Watched ad")
-    
-    cur.execute("SELECT hash_per_ad, btc_per_hash FROM mining_settings LIMIT 1")
-    setting = cur.fetchone()
-    if not setting:
-        cur.close()
-        conn.close()
-        return jsonify({"error": "Mining not configured."}), 500
-
-    hash_per_ad, btc_per_hash = setting
-    # Insert hash session
-    cur.execute("INSERT INTO user_hash_sessions (user_id, hash_amount) VALUES (%s, %s)", (user_id, hash_per_ad))
-    # Update mined btc balance
-    cur.execute("UPDATE users SET mined_btc = mined_btc + %s WHERE id = %s", (btc_per_hash * hash_per_ad, user_id))
-    conn.commit()
-    cur.close()
-    conn.close()
-
-    # Placeholder: integrate with Ads Provider API here to send/display ads
-
-    return jsonify({"message": "Ad watched. Hash rate rewarded."})
-
-@app.route("/user/hash-sessions", methods=["GET"])
-def hash_sessions():
-    email = request.args.get("email")
-
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("SELECT id, timezone FROM users WHERE email = %s", (email,))
-    user = cur.fetchone()
-    if not user:
-        cur.close()
-        conn.close()
-        return jsonify({"error": "User not found."}), 404
-
-    user_id, tz = user
-
-    cur.execute("SELECT hash_amount, timestamp FROM user_hash_sessions WHERE user_id = %s ORDER BY timestamp DESC", (user_id,))
-    sessions = cur.fetchall()
-    cur.close()
-    conn.close()
-
-    result = []
-    for hash_amount, ts in sessions:
-        local_ts = ts.replace(tzinfo=pytz.utc).astimezone(pytz.timezone(tz))
-        result.append({
-            "hash": hash_amount,
-            "timestamp": local_ts.strftime("%Y-%m-%d %H:%M:%S")
-        })
-
-    return jsonify(result)
 
 # === ADMIN OTP REQUEST ===
 @app.route("/admin/request-otp", methods=["POST"])
@@ -599,51 +532,7 @@ def set_mining_rate():
     conn.close()
 
     return jsonify({"message": "Mining rate updated."})
-
-# === WITHDRAWALS ===
-
-@app.route("/user/withdraw", methods=["POST"])
-def withdraw():
-    data = request.json
-    email = data.get("email")
-    amount = float(data.get("amount"))
-    wallet = data.get("wallet")
-
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("SELECT id, mined_btc FROM users WHERE email = %s", (email,))
-    row = cur.fetchone()
-    if not row:
-        cur.close()
-        conn.close()
-        return jsonify({"error": "User not found."}), 404
-    user_id, mined = row
-
-    if mined < amount:
-        cur.close()
-        conn.close()
-        return jsonify({"error": "Insufficient balance."}), 400
-
-    cur.execute("SELECT auto_withdraw_date FROM system_settings ORDER BY id DESC LIMIT 1")
-    setting = cur.fetchone()
-    today = datetime.now().date()
-    status = 'approved' if setting and setting[0] == today else 'pending'
-
-    cur.execute("INSERT INTO withdrawals (user_id, amount, wallet, status) VALUES (%s, %s, %s, %s)",
-                (user_id, amount, wallet, status))
-    cur.execute("UPDATE users SET withdrawn_btc = withdrawn_btc + %s, mined_btc = mined_btc - %s WHERE id = %s",
-                (amount, amount, user_id))
-
-    # ✅ FIXED: Proper indentation here
-    log_user_action(user_id, f"Requested withdrawal of {amount} BTC to {wallet}")
-
-    conn.commit()
-    cur.close()
-    conn.close()
-
-    return jsonify({"message": f"Withdrawal {status}."})
     
-
 @app.route("/admin/pending-withdrawals", methods=["GET"])
 def pending_withdrawals():
     conn = get_db()
