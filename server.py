@@ -242,10 +242,6 @@ def verify_otp():
         return jsonify({"message": "OTP verified."})
     return jsonify({"error": "Invalid OTP."}), 400
 
-
-@app.route("/user/watch-ad", methods=["POST"])
-def watch_ad():
-    return jsonify({"message": "Ad watched successfully!"})
     
 @app.route("/user/create-account", methods=["POST"])
 def create_account():
@@ -448,8 +444,13 @@ def watch_ad():
     data = request.json
     email = data.get("email")
 
+    if not email:
+        return jsonify({"error": "Email is required."}), 400
+
     conn = get_db()
     cur = conn.cursor()
+
+    # Get user ID
     cur.execute("SELECT id FROM users WHERE email = %s", (email,))
     user = cur.fetchone()
     if not user:
@@ -458,28 +459,26 @@ def watch_ad():
         return jsonify({"error": "User not found."}), 404
 
     user_id = user[0]
-    
-    log_user_action(user_id, "Watched ad")
-    
-    cur.execute("SELECT hash_per_ad, btc_per_hash FROM mining_settings LIMIT 1")
-    setting = cur.fetchone()
-    if not setting:
+
+    # Simulate hash session
+    power = f"{random.uniform(1.5, 3.0):.2f} Th/s"
+    duration = f"{random.randint(5, 15)} mins"
+
+    try:
+        cur.execute("""
+            INSERT INTO user_hash_sessions (user_id, power, duration)
+            VALUES (%s, %s, %s)
+        """, (user_id, power, duration))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        print("Watch ad error:", e)
+        return jsonify({"error": "Could not record ad session."}), 500
+    finally:
         cur.close()
         conn.close()
-        return jsonify({"error": "Mining not configured."}), 500
 
-    hash_per_ad, btc_per_hash = setting
-    # Insert hash session
-    cur.execute("INSERT INTO user_hash_sessions (user_id, hash_amount) VALUES (%s, %s)", (user_id, hash_per_ad))
-    # Update mined btc balance
-    cur.execute("UPDATE users SET mined_btc = mined_btc + %s WHERE id = %s", (btc_per_hash * hash_per_ad, user_id))
-    conn.commit()
-    cur.close()
-    conn.close()
-
-    # Placeholder: integrate with Ads Provider API here to send/display ads
-
-    return jsonify({"message": "Ad watched. Hash rate rewarded."})
+    return jsonify({"message": "Hash session logged after ad watch."})
 
 @app.route("/user/hash-sessions", methods=["GET"])
 def hash_sessions():
