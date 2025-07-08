@@ -506,6 +506,48 @@ def top_miners():
 
     return jsonify({"miners": miners})
 
+@app.route("/user/my-rank", methods=["POST"])
+def my_rank():
+    data = request.json
+    email = data.get("email")
+
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute("SELECT id FROM users WHERE email = %s", (email,))
+    user = cur.fetchone()
+    if not user:
+        cur.close()
+        conn.close()
+        return jsonify({"rank": "--", "btc": "--", "hashrate": "--"})
+
+    user_id = user[0]
+
+    cur.execute("""
+        SELECT user_id, SUM(CAST(SPLIT_PART(power, ' ', 1) AS FLOAT)) AS total_hash
+        FROM user_hash_sessions
+        GROUP BY user_id
+        ORDER BY total_hash DESC
+    """)
+    all_rows = cur.fetchall()
+
+    rank = 1
+    user_total = 0
+    for uid, thash in all_rows:
+        if uid == user_id:
+            user_total = thash
+            break
+        rank += 1
+
+    cur.close()
+    conn.close()
+
+    return jsonify({
+        "rank": rank,
+        "btc": f"{(user_total * 0.00005):.4f}",
+        "hashrate": f"{user_total:.2f} Th/s"
+    })
+
 @app.route("/user/hash-sessions", methods=["GET"])
 def hash_sessions():
     email = request.args.get("email")
