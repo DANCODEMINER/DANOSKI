@@ -458,7 +458,7 @@ def send_reset_pin_otp():
         print("send_otp:", send_otp)
         print("type:", type(send_otp))
         print("args:", send_otp.__code__.co_argcount)
-        send_email_otp(email, code):
+        send_email_otp(email, code)
         return jsonify({"message": "OTP sent to reset PIN."})
     except Exception as e:
         print("Error sending PIN OTP:", e)
