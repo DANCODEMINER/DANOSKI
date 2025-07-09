@@ -540,6 +540,27 @@ def next_withdrawal_date():
     else:
         return jsonify({"next_date": "Not set yet"})
 
+@app.route("/user/update-mined-btc", methods=["POST"])
+def update_mined_btc():
+    data = request.json
+    email = data.get("email")
+    mined_btc = data.get("mined_btc")
+
+    if not email or mined_btc is None:
+        return jsonify({"error": "Missing email or mined_btc"}), 400
+
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("UPDATE users SET mined_btc = %s WHERE email = %s", (mined_btc, email))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify({"message": "Mined BTC updated"})
+    except Exception as e:
+        print("Update mined_btc error:", e)
+        return jsonify({"error": "Failed to update mined BTC"}), 500
+
 @app.route("/user/my-rank", methods=["POST"])
 def my_rank():
     data = request.json
