@@ -506,6 +506,21 @@ def top_miners():
 
     return jsonify({"miners": miners})
 
+@app.route("/user/next-withdrawal-date", methods=["GET"])
+def next_withdrawal_date():
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT auto_withdraw_date FROM system_settings ORDER BY id DESC LIMIT 1")
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if row and row[0]:
+        formatted_date = row[0].strftime("%B %d, %Y")
+        return jsonify({"next_date": formatted_date})
+    else:
+        return jsonify({"next_date": "Not set yet"})
+
 @app.route("/user/my-rank", methods=["POST"])
 def my_rank():
     data = request.json
