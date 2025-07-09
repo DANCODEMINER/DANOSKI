@@ -755,6 +755,47 @@ def dashboard_messages():
     messages = [row[0] for row in rows]
     return jsonify({"messages": messages})
 
+@app.route("/user/withdrawal-history", methods=["POST"])
+def withdrawal_history():
+    data = request.json
+    email = data.get("email")
+
+    if not email:
+        return jsonify({"error": "Email required."}), 400
+
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("SELECT id FROM users WHERE email = %s", (email,))
+        row = cur.fetchone()
+        if not row:
+            return jsonify({"error": "User not found."}), 404
+        user_id = row[0]
+
+        cur.execute("""
+            SELECT amount, wallet, status, created_at
+            FROM withdrawals
+            WHERE user_id = %s
+            ORDER BY created_at DESC
+        """, (user_id,))
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        history = [
+            {
+                "amount": str(r[0]),
+                "wallet": r[1],
+                "status": r[2],
+                "date": r[3].isoformat()
+            }
+            for r in rows
+        ]
+        return jsonify({"history": history})
+    except Exception as e:
+        print("Withdrawal history error:", e)
+        return jsonify({"error": "Server error"}), 500
+
 @app.route("/user/recent-hash-sessions", methods=["POST"])
 def recent_hash_sessions():
     data = request.json
