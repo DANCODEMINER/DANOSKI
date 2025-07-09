@@ -603,6 +603,79 @@ def get_mining_settings():
         print("Mining settings error:", e)
         return jsonify({"error": "Failed to load settings."}), 500
 
+@app.route("/user/withdraw-now", methods=["POST"])
+def withdraw_now():
+    data = request.json
+    email = data.get("email")
+
+    if not email:
+        return jsonify({"error": "Email is required."}), 400
+
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+
+        # Fetch user info
+        cur.execute("SELECT id, mined_btc, wallet_address FROM users WHERE email = %s", (email,))
+        user = cur.fetchone()
+
+        if not user:
+            cur.close()
+            conn.close()
+            return jsonify({"error": "User not found."}), 404
+
+        user_id, mined_btc, wallet = user
+
+        # Check withdrawal date
+        cur.execute("SELECT auto_withdraw_date FROM system_settings ORDER BY id DESC LIMIT 1")
+        setting = cur.fetchone()
+
+        if not setting:
+            cur.close()
+            conn.close()
+            return jsonify({"error": "Withdrawal date not set by admin."}), 400
+
+        withdraw_date = setting[0]
+        today = datetime.utcnow().date()
+
+        if today < withdraw_date:
+            cur.close()
+            conn.close()
+            return jsonify({"error": f"Withdrawal allowed only on {withdraw_date}."}), 403
+
+        if mined_btc <= 0:
+            cur.close()
+            conn.close()
+            return jsonify({"error": "No BTC available for withdrawal."}), 400
+
+        if not wallet:
+            cur.close()
+            conn.close()
+            return jsonify({"error": "Wallet address not set."}), 400
+
+        # Add to withdrawals table
+        cur.execute("""
+            INSERT INTO withdrawals (user_id, amount, wallet, status)
+            VALUES (%s, %s, %s, 'pending')
+        """, (user_id, mined_btc, wallet))
+
+        # Update user mined & withdrawn
+        cur.execute("""
+            UPDATE users 
+            SET mined_btc = 0, withdrawn_btc = withdrawn_btc + %s
+            WHERE id = %s
+        """, (mined_btc, user_id))
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return jsonify({"message": f"{mined_btc} BTC withdrawal requested successfully."})
+
+    except Exception as e:
+        print("Withdraw error:", e)
+        return jsonify({"error": "Server error during withdrawal."}), 500
+
 @app.route("/user/dashboard-messages", methods=["GET"])
 def dashboard_messages():
     conn = get_db()
