@@ -49,6 +49,8 @@ def init_db():
         );
     ''')
 
+    cur.execute("ALTER TABLE user_hash_sessions ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP")
+
     cur.execute('''
     CREATE TABLE IF NOT EXISTS user_logs (
         id SERIAL PRIMARY KEY,
@@ -445,40 +447,48 @@ def watch_ad():
     email = data.get("email")
 
     if not email:
-        return jsonify({"error": "Email is required."}), 400
-
-    conn = get_db()
-    cur = conn.cursor()
-
-    # Get user ID
-    cur.execute("SELECT id FROM users WHERE email = %s", (email,))
-    user = cur.fetchone()
-    if not user:
-        cur.close()
-        conn.close()
-        return jsonify({"error": "User not found."}), 404
-
-    user_id = user[0]
-
-    # Simulate hash session
-    power = f"{random.uniform(1.5, 3.0):.2f} Th/s"
-    duration = f"{random.randint(5, 15)} mins"
+        return jsonify({"error": "Email not found. Please log in again."}), 400
 
     try:
+        conn = get_db()
+        cur = conn.cursor()
+
+        # Get user_id
+        cur.execute("SELECT id FROM users WHERE email = %s", (email,))
+        user = cur.fetchone()
+        if not user:
+            cur.close()
+            conn.close()
+            return jsonify({"error": "User not found."}), 404
+        user_id = user[0]
+
+        # Get hash_per_ad from settings
+        cur.execute("SELECT hash_per_ad FROM mining_settings LIMIT 1")
+        row = cur.fetchone()
+        if not row:
+            cur.close()
+            conn.close()
+            return jsonify({"error": "Mining settings not found."}), 500
+
+        hash_amount = row[0]
+        now = datetime.utcnow()
+        expires = now + timedelta(hours=24)
+
+        # Insert into user_hash_sessions
         cur.execute("""
-            INSERT INTO user_hash_sessions (user_id, power, duration)
-            VALUES (%s, %s, %s)
-        """, (user_id, power, duration))
+            INSERT INTO user_hash_sessions (user_id, hash_amount, timestamp, expires_at)
+            VALUES (%s, %s, %s, %s)
+        """, (user_id, hash_amount, now, expires))
+
         conn.commit()
-    except Exception as e:
-        conn.rollback()
-        print("Watch ad error:", e)
-        return jsonify({"error": "Could not record ad session."}), 500
-    finally:
         cur.close()
         conn.close()
 
-    return jsonify({"message": "Hash session logged after ad watch."})
+        return jsonify({"message": f"Hashrate +{hash_amount} activated for 24h."})
+
+    except Exception as e:
+        print("Watch Ad Error:", e)
+        return jsonify({"error": "Failed to activate hashrate."}), 500
 
 @app.route("/user/top-miners", methods=["GET"])
 def top_miners():
