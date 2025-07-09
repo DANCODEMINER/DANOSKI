@@ -628,16 +628,18 @@ def get_mining_settings():
 def withdraw_now():
     data = request.json
     email = data.get("email")
+    btc = data.get("btc")
+    wallet = data.get("wallet")
 
-    if not email:
-        return jsonify({"error": "Email is required."}), 400
+    if not all([email, btc, wallet]):
+        return jsonify({"error": "Email, BTC, and Wallet are required."}), 400
 
     try:
         conn = get_db()
         cur = conn.cursor()
 
-        # Fetch user info
-        cur.execute("SELECT id, mined_btc, wallet_address FROM users WHERE email = %s", (email,))
+        # Fetch user
+        cur.execute("SELECT id, mined_btc FROM users WHERE email = %s", (email,))
         user = cur.fetchone()
 
         if not user:
@@ -645,9 +647,9 @@ def withdraw_now():
             conn.close()
             return jsonify({"error": "User not found."}), 404
 
-        user_id, mined_btc, wallet = user
+        user_id, mined_btc = user
 
-        # Check withdrawal date
+        # Check if admin set withdrawal date
         cur.execute("SELECT auto_withdraw_date FROM system_settings ORDER BY id DESC LIMIT 1")
         setting = cur.fetchone()
 
@@ -664,34 +666,29 @@ def withdraw_now():
             conn.close()
             return jsonify({"error": f"Withdrawal allowed only on {withdraw_date}."}), 403
 
-        if mined_btc <= 0:
+        if float(btc) > float(mined_btc):
             cur.close()
             conn.close()
-            return jsonify({"error": "No BTC available for withdrawal."}), 400
+            return jsonify({"error": "Withdrawal exceeds mined BTC."}), 400
 
-        if not wallet:
-            cur.close()
-            conn.close()
-            return jsonify({"error": "Wallet address not set."}), 400
-
-        # Add to withdrawals table
+        # Insert into withdrawals table
         cur.execute("""
             INSERT INTO withdrawals (user_id, amount, wallet, status)
             VALUES (%s, %s, %s, 'pending')
-        """, (user_id, mined_btc, wallet))
+        """, (user_id, btc, wallet))
 
-        # Update user mined & withdrawn
+        # Update user mined and withdrawn BTC
         cur.execute("""
             UPDATE users 
-            SET mined_btc = 0, withdrawn_btc = withdrawn_btc + %s
+            SET mined_btc = mined_btc - %s, withdrawn_btc = withdrawn_btc + %s
             WHERE id = %s
-        """, (mined_btc, user_id))
+        """, (btc, btc, user_id))
 
         conn.commit()
         cur.close()
         conn.close()
 
-        return jsonify({"message": f"{mined_btc} BTC withdrawal requested successfully."})
+        return jsonify({"message": f"{btc} BTC withdrawal requested successfully."})
 
     except Exception as e:
         print("Withdraw error:", e)
