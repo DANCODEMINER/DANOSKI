@@ -478,12 +478,6 @@ def save_total_mined():
     conn.commit()
     return jsonify({"message": "Total mined BTC saved."})
 
-@app.route("/user/get-total-mined", methods=["POST"])
-def get_total_mined():
-    email = get_email()
-    cursor.execute("SELECT total_mined FROM users WHERE email = %s", (email,))
-    btc = cursor.fetchone()[0]
-    return jsonify({"btc": btc})
 
 # 4. Total Withdrawn
 @app.route("/user/save-total-withdrawn", methods=["POST"])
