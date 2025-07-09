@@ -694,6 +694,55 @@ def withdraw_now():
         print("Withdraw error:", e)
         return jsonify({"error": "Server error during withdrawal."}), 500
 
+@app.route("/user/withdrawal-history", methods=["POST"])
+def withdrawal_history():
+    data = request.json
+    email = data.get("email")
+
+    if not email:
+        return jsonify({"error": "Email is required."}), 400
+
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+
+        # Get user ID
+        cur.execute("SELECT id FROM users WHERE email = %s", (email,))
+        user = cur.fetchone()
+        if not user:
+            cur.close()
+            conn.close()
+            return jsonify({"error": "User not found."}), 404
+
+        user_id = user[0]
+
+        # Get withdrawals
+        cur.execute("""
+            SELECT amount, wallet, status, created_at
+            FROM withdrawals
+            WHERE user_id = %s
+            ORDER BY created_at DESC
+        """, (user_id,))
+        rows = cur.fetchall()
+
+        cur.close()
+        conn.close()
+
+        withdrawals = []
+        for row in rows:
+            withdrawals.append({
+                "amount": float(row[0]),
+                "wallet": row[1],
+                "status": row[2],
+                "created_at": row[3].strftime("%Y-%m-%d %H:%M:%S")
+            })
+
+        return jsonify({"withdrawals": withdrawals})
+
+    except Exception as e:
+        print("Withdrawal history error:", e)
+        return jsonify({"error": "Failed to fetch withdrawal history."}), 500
+
 @app.route("/user/dashboard-messages", methods=["GET"])
 def dashboard_messages():
     conn = get_db()
