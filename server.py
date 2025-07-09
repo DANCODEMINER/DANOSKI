@@ -113,6 +113,14 @@ def init_db():
         );
     ''')
 
+    cur.execute('''
+    CREATE TABLE IF NOT EXISTS mining_settings (
+        id SERIAL PRIMARY KEY,
+        hash_per_ad INTEGER DEFAULT 1,
+        btc_per_hash NUMERIC DEFAULT 0.00005
+    );
+''')
+
     # Mining settings table
     cur.execute('''
         CREATE TABLE IF NOT EXISTS mining_settings (
@@ -573,6 +581,27 @@ def my_rank():
         "btc": f"{(user_total * 0.00005):.4f}",
         "hashrate": f"{user_total:.2f} Th/s"
     })
+
+@app.route("/user/mining-settings", methods=["GET"])
+def get_mining_settings():
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("SELECT hash_per_ad, btc_per_hash FROM mining_settings LIMIT 1")
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+
+        if row:
+            return jsonify({
+                "hash_per_ad": row[0],
+                "btc_per_hash": float(row[1])
+            })
+        else:
+            return jsonify({"error": "Mining settings not configured."}), 404
+    except Exception as e:
+        print("Mining settings error:", e)
+        return jsonify({"error": "Failed to load settings."}), 500
 
 @app.route("/user/dashboard-messages", methods=["GET"])
 def dashboard_messages():
