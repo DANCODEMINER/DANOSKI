@@ -747,6 +747,60 @@ def withdraw():
     conn.close()
 
     return jsonify({"message": f"Withdrawal {status}."})
+
+@app.route("/user/cleanup-expired-sessions", methods=["POST"])
+def cleanup_expired_sessions():
+    data = request.json
+    email = data.get("email")
+
+    if not email:
+        return jsonify({"error": "Email is required"}), 400
+
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+
+        # Get user ID
+        cur.execute("SELECT id FROM users WHERE email = %s", (email,))
+        user_row = cur.fetchone()
+        if not user_row:
+            return jsonify({"error": "User not found."}), 404
+
+        user_id = user_row[0]
+
+        # Get expired sessions
+        cur.execute("""
+            SELECT id, hash_amount FROM user_hash_sessions
+            WHERE user_id = %s AND expires_at <= CURRENT_TIMESTAMP
+        """, (user_id,))
+        expired_sessions = cur.fetchall()
+
+        total_expired_hash = sum([row[1] for row in expired_sessions])
+
+        # Delete expired sessions
+        cur.execute("""
+            DELETE FROM user_hash_sessions
+            WHERE user_id = %s AND expires_at <= CURRENT_TIMESTAMP
+        """, (user_id,))
+
+        # Reduce user's total hashrate
+        cur.execute("""
+            UPDATE users SET hash_rate = GREATEST(hash_rate - %s, 0)
+            WHERE id = %s
+        """, (total_expired_hash, user_id))
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return jsonify({
+            "message": f"{len(expired_sessions)} expired sessions removed.",
+            "removed_hashrate": total_expired_hash
+        })
+
+    except Exception as e:
+        print("Cleanup error:", e)
+        return jsonify({"error": "Failed to clean expired sessions."}), 500
     
 
 @app.route("/admin/pending-withdrawals", methods=["GET"])
