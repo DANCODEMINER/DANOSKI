@@ -438,6 +438,171 @@ def claim_hashrate():
         "expires_at": expires_at.isoformat()
     }), 200
 
+@app.get("/user/dashboard")
+def user_dashboard():
+    email = request.args.get("email")
+    if not email:
+        return jsonify({"error": "Email is required"}), 400
+
+    conn = get_db()
+    cur = conn.cursor()
+
+    # Get user data
+    cur.execute("SELECT id, btc_balance, total_earned, last_mined FROM users WHERE email = %s", (email,))
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        return jsonify({"error": "User not found"}), 404
+
+    user_id, btc_balance, total_earned, last_mined = row
+
+    # Get total active hashrate
+    now = datetime.utcnow()
+    cur.execute("""
+        SELECT COALESCE(SUM(hashrate), 0) FROM hashrates
+        WHERE user_id = %s AND expires_at > %s
+    """, (user_id, now))
+    hashrate = cur.fetchone()[0]
+
+    conn.close()
+
+    return jsonify({
+        "btc_balance": float(btc_balance),
+        "total_earned": float(total_earned),
+        "hashrate": hashrate,
+        "last_mined": last_mined.isoformat()
+    }), 200
+
+
+@app.post("/user/mine-sync")
+def mine_sync():
+    data = request.get_json()
+    email = data.get("email")
+
+    if not email:
+        return jsonify({"error": "Email is required"}), 400
+
+    conn = get_db()
+    cur = conn.cursor()
+
+    # Get user info
+    cur.execute("SELECT id, btc_balance, total_earned, last_mined FROM users WHERE email = %s", (email,))
+    user = cur.fetchone()
+    if not user:
+        conn.close()
+        return jsonify({"error": "User not found"}), 404
+
+    user_id, btc_balance, total_earned, last_mined = user
+    now = datetime.utcnow()
+    seconds_elapsed = (now - last_mined).total_seconds()
+
+    # Get active hashrate
+    cur.execute("""
+        SELECT COALESCE(SUM(hashrate), 0) FROM hashrates
+        WHERE user_id = %s AND expires_at > %s
+    """, (user_id, now))
+    hashrate = cur.fetchone()[0]
+
+    # Mining formula: BTC = hashrate * seconds * factor
+    mining_factor = 0.00000001  # You can adjust this to control mining speed
+    mined_btc = hashrate * seconds_elapsed * mining_factor
+
+    # Update user's BTC balance and last_mined
+    new_balance = btc_balance + mined_btc
+    new_total = total_earned + mined_btc
+
+    cur.execute("""
+        UPDATE users
+        SET btc_balance = %s, total_earned = %s, last_mined = %s
+        WHERE id = %s
+    """, (new_balance, new_total, now, user_id))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({
+        "mined_btc": round(mined_btc, 8),
+        "new_balance": round(new_balance, 8),
+        "hashrate": hashrate
+    })
+
+
+@app.post("/user/withdraw")
+def user_withdraw():
+    data = request.get_json()
+    email = data.get("email")
+    amount = float(data.get("amount", 0))
+    wallet = data.get("wallet")
+
+    if not email or not wallet or amount <= 0:
+        return jsonify({"error": "All fields are required."}), 400
+
+    conn = get_db()
+    cur = conn.cursor()
+
+    # Get user and balance
+    cur.execute("SELECT id, btc_balance FROM users WHERE email = %s", (email,))
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        return jsonify({"error": "User not found"}), 404
+
+    user_id, balance = row
+
+    if amount > balance:
+        conn.close()
+        return jsonify({"error": "Insufficient balance."}), 400
+
+    # Deduct balance and insert withdrawal record
+    new_balance = balance - amount
+
+    cur.execute("UPDATE users SET btc_balance = %s WHERE id = %s", (new_balance, user_id))
+    cur.execute("""
+        INSERT INTO withdrawals (user_id, amount, wallet, status, created_at)
+        VALUES (%s, %s, %s, %s, %s)
+    """, (user_id, amount, wallet, 'pending', datetime.utcnow()))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": "Withdrawal request submitted.", "new_balance": round(new_balance, 8)})
+
+
+@app.get("/user/messages")
+def get_messages():
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT title, content, created_at FROM messages ORDER BY created_at DESC")
+    rows = cur.fetchall()
+    conn.close()
+
+    messages = [
+        {
+            "title": row[0],
+            "content": row[1],
+            "created_at": row[2].isoformat()
+        }
+        for row in rows
+    ]
+
+    return jsonify(messages)
+
+@app.post("/admin/add-message")
+def add_message():
+    data = request.get_json()
+    title = data.get("title")
+    content = data.get("content")
+
+    if not title or not content:
+        return jsonify({"error": "Title and content are required."}), 400
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("INSERT INTO messages (title, content) VALUES (%s, %s)", (title, content))
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": "Announcement posted successfully."})
 
 # === RUN SERVER ===
 if __name__ == "__main__":
