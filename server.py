@@ -228,7 +228,7 @@ def create_account():
     try:
         cur.execute("""
             INSERT INTO users (full_name, country, email, password, pin)
-            VALUES (%s, %s, %s, %s, %s, TRUE)
+            VALUES (%s, %s, %s, %s, %s)
         """, (full_name, country, email, hashed_password, pin))
         conn.commit()
     except Exception as e:
