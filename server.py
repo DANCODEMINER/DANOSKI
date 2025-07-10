@@ -637,6 +637,47 @@ def add_message():
 
     return jsonify({"message": "Announcement posted successfully."})
 
+@app.get("/user/hashrates")
+def get_active_hashrates():
+    email = request.args.get("email")
+    if not email:
+        return jsonify({"error": "Email is required"}), 400
+
+    conn = get_db()
+    cur = conn.cursor()
+
+    # Get user ID
+    cur.execute("SELECT id FROM users WHERE email = %s", (email,))
+    result = cur.fetchone()
+    if not result:
+        conn.close()
+        return jsonify({"error": "User not found"}), 404
+
+    user_id = result[0]
+
+    # DELETE expired hashrates for this user
+    cur.execute("DELETE FROM hashrates WHERE user_id = %s AND expires_at <= NOW()", (user_id,))
+
+    # Get all non-expired hashrates
+    cur.execute("""
+        SELECT hashrate, expires_at
+        FROM hashrates
+        WHERE user_id = %s
+        ORDER BY expires_at
+    """, (user_id,))
+
+    rows = cur.fetchall()
+    conn.commit()
+    conn.close()
+
+    hashrates = [{
+        "hashrate": r[0],
+        "expires_at": r[1].isoformat()
+    } for r in rows]
+
+    return jsonify(hashrates)
+
+
 # === RUN SERVER ===
 if __name__ == "__main__":
     import pytz  # required for timezone logic in mining functions
