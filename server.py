@@ -438,7 +438,276 @@ def reset_pin():
     return jsonify({"message": "PIN reset successful."})
 
 # === MINING
+@app.route('/mine', methods=['POST'])
+def mine_bitcoin():
+    data = request.get_json()
+    email = data.get('email')
 
+    # 1. Validate user exists
+    cur.execute("SELECT id FROM users WHERE email = %s", (email,))
+    user = cur.fetchone()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    user_id = user[0]
+
+    # 2. Get admin mining config
+    cur.execute("SELECT btc_per_hashrate, hashrate_per_ad FROM admin_config LIMIT 1")
+    config = cur.fetchone()
+    if not config:
+        return jsonify({"error": "Mining config missing"}), 500
+
+    btc_per_hashrate = config[0]
+    hashrate_awarded = config[1]
+
+    # 3. Calculate BTC earned
+    btc_earned = btc_per_hashrate * hashrate_awarded
+
+    # 4. Update total_mined
+    cur.execute("UPDATE users SET total_mined = total_mined + %s WHERE id = %s", (btc_earned, user_id))
+
+    # 5. Record session
+    cur.execute("""
+        INSERT INTO mining_sessions (user_id, hashrate, btc_earned)
+        VALUES (%s, %s, %s)
+    """, (user_id, hashrate_awarded, btc_earned))
+
+    # 6. Get updated total mined
+    cur.execute("SELECT total_mined FROM users WHERE id = %s", (user_id,))
+    updated = cur.fetchone()
+
+    conn.commit()
+
+    return jsonify({
+        "btc_earned": float(btc_earned),
+        "hashrate": float(hashrate_awarded),
+        "total_mined": float(updated[0])
+    })
+
+@app.route('/dashboard-stats', methods=['POST'])
+def dashboard_stats():
+    data = request.get_json()
+    email = data.get('email')
+
+    # Validate user
+    cur.execute("SELECT total_mined FROM users WHERE email = %s", (email,))
+    user = cur.fetchone()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    # Total mined
+    total_mined = float(user[0])
+
+    # Sum of hashrate
+    cur.execute("SELECT COALESCE(SUM(hashrate), 0) FROM mining_sessions WHERE email = %s", (email,))
+    total_hashrate = float(cur.fetchone()[0])
+
+    # Count of sessions
+    cur.execute("SELECT COUNT(*) FROM mining_sessions WHERE email = %s", (email,))
+    active_sessions = cur.fetchone()[0]
+
+    return jsonify({
+        "total_mined": total_mined,
+        "total_hashrate": total_hashrate,
+        "active_sessions": active_sessions
+    })
+
+@app.route('/hash-sessions', methods=['POST'])
+def get_hash_sessions():
+    data = request.get_json()
+    email = data.get('email')
+
+    cur.execute("""
+        SELECT id, created_at, hashrate, duration 
+        FROM mining_sessions 
+        WHERE email = %s 
+        ORDER BY created_at DESC 
+        LIMIT 10
+    """, (email,))
+    
+    sessions = cur.fetchall()
+    result = []
+    for row in sessions:
+        result.append({
+            "id": row[0],
+            "date": row[1].strftime("%Y-%m-%d %H:%M"),
+            "power": f"{row[2]:.2f} Th/s",
+            "duration": row[3] or "30 sec"
+        })
+    
+    return jsonify(result)
+
+@app.route('/userleaderboard', methods=['POST'])
+def leaderboard():
+    data = request.get_json()
+    email = data.get('email')
+
+    # Fetch Top 10 Miners
+    cur.execute("""
+        SELECT username, total_mined, country 
+        FROM users 
+        ORDER BY total_mined DESC 
+        LIMIT 10
+    """)
+    top_rows = cur.fetchall()
+    top_miners = []
+    for idx, row in enumerate(top_rows, 1):
+        top_miners.append({
+            "rank": idx,
+            "username": row[0],
+            "btc": float(row[1]),
+            "country": row[2]
+        })
+
+    # Fetch user's rank
+    cur.execute("""
+        SELECT email, total_mined 
+        FROM users 
+        ORDER BY total_mined DESC
+    """)
+    all_users = cur.fetchall()
+    
+    user_rank = next((i + 1 for i, u in enumerate(all_users) if u[0] == email), None)
+    user_btc = next((u[1] for u in all_users if u[0] == email), 0)
+
+    # Optional: get username too
+    cur.execute("SELECT username FROM users WHERE email = %s", (email,))
+    username = cur.fetchone()[0]
+
+    return jsonify({
+        "top_miners": top_miners,
+        "my_rank": user_rank,
+        "my_btc": float(user_btc),
+        "my_username": username
+    })
+
+@app.route('/user-info', methods=['POST'])
+def user_info():
+    data = request.get_json()
+    email = data.get('email')
+
+    cur.execute("SELECT username, country FROM users WHERE email = %s", (email,))
+    result = cur.fetchone()
+
+    if not result:
+        return jsonify({"error": "User not found"}), 404
+
+    username, country = result
+
+    # Optional: extract first name from username if needed
+    first_name = username.split()[0] if ' ' in username else username
+
+    # Generate flag image URL using country name
+    country_flag = f"https://flagsapi.com/{country}/flat/64.png"
+
+    return jsonify({
+        "username": username,
+        "first_name": first_name,
+        "country": country,
+        "flag_url": country_flag
+    })
+
+@app.route('/hash-sessions', methods=['POST'])
+def get_hash_sessions():
+    data = request.get_json()
+    email = data.get('email')
+
+    cur.execute("""
+        SELECT id, created_at, hashrate, duration 
+        FROM mining_sessions 
+        WHERE email = %s 
+        ORDER BY created_at DESC 
+        LIMIT 10
+    """, (email,))
+    
+    sessions = cur.fetchall()
+
+    session_list = []
+    for session in sessions:
+        session_list.append({
+            "id": session[0],
+            "date": session[1].strftime("%Y-%m-%d %H:%M"),
+            "hashrate": session[2],
+            "duration": session[3] if session[3] else "N/A"
+        })
+
+    return jsonify(session_list)
+
+@app.route('/leaderboard', methods=['POST'])
+def get_leaderboard():
+    data = request.get_json()
+    email = data.get('email')
+
+    # Top 10 miners in the past 30 days
+    cur.execute("""
+        SELECT email, SUM(btc_earned) AS total_btc, SUM(hashrate) AS total_hashrate
+        FROM mining_sessions
+        WHERE created_at >= NOW() - INTERVAL '30 days'
+        GROUP BY email
+        ORDER BY total_btc DESC
+        LIMIT 10
+    """)
+    top_miners = cur.fetchall()
+
+    leaderboard = []
+    for i, miner in enumerate(top_miners, start=1):
+        leaderboard.append({
+            "rank": i,
+            "email": miner[0],
+            "btc": float(miner[1]),
+            "hashrate": float(miner[2])
+        })
+
+    # Get current user's rank
+    cur.execute("""
+        SELECT email, SUM(btc_earned) AS total_btc
+        FROM mining_sessions
+        WHERE created_at >= NOW() - INTERVAL '30 days'
+        GROUP BY email
+        ORDER BY total_btc DESC
+    """)
+    all_ranks = cur.fetchall()
+
+    my_rank = "--"
+    my_btc = 0.0
+    for i, user in enumerate(all_ranks, start=1):
+        if user[0] == email:
+            my_rank = i
+            my_btc = float(user[1])
+            break
+
+    # Get hashrate
+    cur.execute("""
+        SELECT SUM(hashrate) FROM mining_sessions
+        WHERE email = %s AND created_at >= NOW() - INTERVAL '30 days'
+    """, (email,))
+    result = cur.fetchone()
+    my_hashrate = float(result[0]) if result[0] else 0.0
+
+    return jsonify({
+        "top_miners": leaderboard,
+        "my_rank": my_rank,
+        "my_btc": my_btc,
+        "my_hashrate": my_hashrate
+    })
+
+@app.route('/profile', methods=['POST'])
+def get_profile():
+    data = request.get_json()
+    email = data.get('email')
+
+    cur.execute("SELECT username, email, country, join_date FROM users WHERE email = %s", (email,))
+    user = cur.fetchone()
+
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    return jsonify({
+        "name": user[0],
+        "email": user[1],
+        "country": user[2],
+        "join_date": user[3].strftime("%B %d, %Y") if user[3] else "N/A"
+    })
 
 
 # === RUN SERVER ===
