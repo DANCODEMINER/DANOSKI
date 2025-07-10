@@ -444,10 +444,12 @@ def mine_bitcoin():
     email = data.get('email')
 
     # 1. Validate user exists
-    cur.execute("SELECT * FROM users WHERE email = %s", (email,))
+    cur.execute("SELECT id FROM users WHERE email = %s", (email,))
     user = cur.fetchone()
     if not user:
         return jsonify({"error": "User not found"}), 404
+
+    user_id = user[0]
 
     # 2. Get admin mining config
     cur.execute("SELECT btc_per_hashrate, hashrate_per_ad FROM admin_config LIMIT 1")
@@ -461,25 +463,23 @@ def mine_bitcoin():
     # 3. Calculate BTC earned
     btc_earned = btc_per_hashrate * hashrate_awarded
 
-    # 4. Update user mined total
-    cur.execute("UPDATE users SET total_mined = total_mined + %s WHERE email = %s", (btc_earned, email))
-    
+    # 4. Update total_mined
+    cur.execute("UPDATE users SET total_mined = total_mined + %s WHERE id = %s", (btc_earned, user_id))
+
     # 5. Record session
-    cur.execute("INSERT INTO mining_sessions (email, hashrate, btc_earned) VALUES (%s, %s, %s)",
-                (email, hashrate_awarded, btc_earned))
+    cur.execute("""
+        INSERT INTO mining_sessions (user_id, hashrate, btc_earned)
+        VALUES (%s, %s, %s)
+    """, (user_id, hashrate_awarded, btc_earned))
+
+    # 6. Get updated total mined
+    cur.execute("SELECT total_mined FROM users WHERE id = %s", (user_id,))
+    updated = cur.fetchone()
 
     conn.commit()
 
-    # 6. Return updated stats
     return jsonify({
-        "btc_earned": btc_earned,
-        "hashrate": hashrate_awarded,
-        "total_mined": user[5] + btc_earned  # assuming user[5] is current total_mined
+        "btc_earned": float(btc_earned),
+        "hashrate": float(hashrate_awarded),
+        "total_mined": float(updated[0])
     })
-
-
-# === RUN SERVER ===
-if __name__ == "__main__":
-    import pytz  # required for timezone logic in mining functions
-    init_db()    # make sure all tables are created
-    app.run(host="0.0.0.0", port=5000)
