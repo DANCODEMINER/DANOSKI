@@ -93,8 +93,8 @@ def init_db():
 
     # OTP TABLE
     cur.execute("""
-    DROP TABLE IF EXISTS otp;
-    CREATE TABLE otp (
+    DROP TABLE IF EXISTS otps;
+    CREATE TABLE otps (
         id SERIAL PRIMARY KEY,
         email VARCHAR(100) NOT NULL,
         code VARCHAR(6) NOT NULL,
@@ -169,7 +169,7 @@ def send_otp_route():
         conn = get_db()
         cur = conn.cursor()
         cur.execute("""
-            INSERT INTO otp (email, code)
+            INSERT INTO otps (email, code)
             VALUES (%s, %s)
             ON CONFLICT (email) DO UPDATE SET code = EXCLUDED.code, created_at = CURRENT_TIMESTAMP
         """, (email, otp))
