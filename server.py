@@ -239,6 +239,37 @@ def create_account():
 
     return jsonify({"message": "Account created successfully."})
 
+@app.route("/user/signup", methods=["POST"])
+def user_signup():
+    data = request.json
+    name = data.get("full_name")  # Changed from full_name
+    country = data.get("country")
+    email = data.get("email")
+    password = data.get("password")
+
+    if not strong_password(password):
+        return jsonify({"error": "Weak password. Use alphanumeric and symbol (min 6 chars)."}), 400
+
+    # Check if email already exists
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM users WHERE email = %s", (email,))
+    if cur.fetchone():
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Email already registered."}), 400
+
+    otp = generate_otp()
+
+    # Save OTP for this email
+    cur.execute("INSERT INTO otps (email, code) VALUES (%s, %s)", (email, otp))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    # Send OTP email
+    send_otp(email, otp)
+    return jsonify({"message": "OTP sent to email."})
 
 @app.route("/user/login", methods=["POST"])
 def login():
