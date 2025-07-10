@@ -483,3 +483,31 @@ def mine_bitcoin():
         "hashrate": float(hashrate_awarded),
         "total_mined": float(updated[0])
     })
+
+@app.route('/dashboard-stats', methods=['POST'])
+def dashboard_stats():
+    data = request.get_json()
+    email = data.get('email')
+
+    # Validate user
+    cur.execute("SELECT total_mined FROM users WHERE email = %s", (email,))
+    user = cur.fetchone()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    # Total mined
+    total_mined = float(user[0])
+
+    # Sum of hashrate
+    cur.execute("SELECT COALESCE(SUM(hashrate), 0) FROM mining_sessions WHERE email = %s", (email,))
+    total_hashrate = float(cur.fetchone()[0])
+
+    # Count of sessions
+    cur.execute("SELECT COUNT(*) FROM mining_sessions WHERE email = %s", (email,))
+    active_sessions = cur.fetchone()[0]
+
+    return jsonify({
+        "total_mined": total_mined,
+        "total_hashrate": total_hashrate,
+        "active_sessions": active_sessions
+    })
