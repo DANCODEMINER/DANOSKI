@@ -446,12 +446,11 @@ def save_btc_counter():
     conn.commit()
     return jsonify({"message": "BTC counter saved."})
 
-@app.route("/user/get-btc-counter", methods=["POST"])
-def get_btc_counter():
-    email = get_email()
-    cursor.execute("SELECT btc_counter FROM users WHERE email = %s", (email,))
-    btc = cursor.fetchone()[0]
-    return jsonify({"btc": btc})
+@app.route('/btc-counter')
+def btc_counter():
+    email = request.args.get('email')
+    # Fetch BTC balance from database or mock data
+    return jsonify({"btc": "0.00543210"})
 
 # 2. Hashrate
 @app.route("/user/save-hashrate", methods=["POST"])
