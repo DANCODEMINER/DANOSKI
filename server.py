@@ -28,127 +28,85 @@ def get_db():
 def init_db():
     conn = get_db()
     cur = conn.cursor()
-    # Users table
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            full_name TEXT,
-            country TEXT,
-            email TEXT UNIQUE,
-            password TEXT,
-            pin TEXT,
-            hash_rate INTEGER DEFAULT 0,
-            mined_btc NUMERIC DEFAULT 0,
-            withdrawn_btc NUMERIC DEFAULT 0,
-            wallet_address TEXT,
-            verified BOOLEAN DEFAULT FALSE,
-            timezone TEXT,
-            suspended BOOLEAN DEFAULT FALSE,
-            deleted BOOLEAN DEFAULT FALSE,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-    ''')
 
-    cur.execute('''
-    CREATE TABLE IF NOT EXISTS user_logs (
+    # USERS TABLE
+    cur.execute("""
+    DROP TABLE IF EXISTS users CASCADE;
+    CREATE TABLE users (
         id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id),
-        action TEXT,
-        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        name VARCHAR(100) NOT NULL,
+        email VARCHAR(100) UNIQUE NOT NULL,
+        country VARCHAR(100) NOT NULL,
+        password TEXT NOT NULL,
+        pin VARCHAR(4) NOT NULL,
+        btc_balance NUMERIC(16, 8) DEFAULT 0.0,
+        total_earned NUMERIC(16, 8) DEFAULT 0.0,
+        last_mined TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
-''')
+    """)
 
-    # Admins table
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS admins (
-            id SERIAL PRIMARY KEY,
-            username TEXT UNIQUE,
-            email TEXT UNIQUE,
-            password TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-    ''')
-
-    # OTPs table
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS otps (
-            id SERIAL PRIMARY KEY,
-            email TEXT,
-            code TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            for_admin BOOLEAN DEFAULT FALSE
-        );
-    ''')
-
-    # Withdrawals table
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS withdrawals (
-            id SERIAL PRIMARY KEY,
-            user_id INTEGER REFERENCES users(id),
-            amount NUMERIC,
-            wallet TEXT,
-            status TEXT DEFAULT 'pending',
-            fee NUMERIC DEFAULT 0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-    ''')
-
-    # System settings table
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS system_settings (
-            id SERIAL PRIMARY KEY,
-            auto_withdraw_date DATE
-        );
-    ''')
-
-    # User hash sessions table
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS user_hash_sessions (
-            id SERIAL PRIMARY KEY,
-            user_id INTEGER,
-            hash_amount INTEGER,
-            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-    ''')
-
-    # Mining settings table
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS mining_settings (
-            hash_per_ad INTEGER,
-            btc_per_hash NUMERIC
-        );
-    ''')
-
-    # Central wallet table (live Bitcoin wallet balance tracking)
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS central_wallet (
-            id SERIAL PRIMARY KEY,
-            btc_balance NUMERIC DEFAULT 0
-        );
-    ''')
-
-    # Wallet settings table (withdrawal fees, etc.)
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS wallet_settings (
-            id SERIAL PRIMARY KEY,
-            withdraw_fee_btc NUMERIC DEFAULT 0
-        );
-    ''')
-
-    cur.execute('''
-    CREATE TABLE IF NOT EXISTS user_logs (
+    # HASHRATES TABLE
+    cur.execute("""
+    DROP TABLE IF EXISTS hashrates;
+    CREATE TABLE hashrates (
         id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id),
-        action TEXT,
-        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        hashrate INTEGER NOT NULL,
+        created_at TIMESTAMP NOT NULL,
+        expires_at TIMESTAMP NOT NULL
     );
-''')
+    """)
+
+    # WITHDRAWALS TABLE
+    cur.execute("""
+    DROP TABLE IF EXISTS withdrawals;
+    CREATE TABLE withdrawals (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        amount NUMERIC(16, 8) NOT NULL,
+        wallet TEXT NOT NULL,
+        status VARCHAR(20) DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    """)
+
+    # MESSAGES TABLE
+    cur.execute("""
+    DROP TABLE IF EXISTS messages;
+    CREATE TABLE messages (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    """)
+
+    # ADMINS TABLE (OPTIONAL)
+    cur.execute("""
+    DROP TABLE IF EXISTS admins;
+    CREATE TABLE admins (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(100) UNIQUE NOT NULL,
+        password TEXT NOT NULL
+    );
+    """)
+
+    # OTP TABLE
+    cur.execute("""
+    DROP TABLE IF EXISTS otp;
+    CREATE TABLE otp (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(100) NOT NULL,
+        code VARCHAR(6) NOT NULL,
+        purpose VARCHAR(50) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    """)
 
     conn.commit()
-    cur.close()
-    conn.close()
-
-# === UTILITIES ===
+    conn.close()   
+    
+            
 
 def send_otp(email, code):
     subject = f"{SITE_NAME} OTP Verification"
