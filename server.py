@@ -31,19 +31,21 @@ def init_db():
 
     # USERS TABLE
     cur.execute("""
-    DROP TABLE IF EXISTS users CASCADE;
-    CREATE TABLE users (
+    CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
-        name VARCHAR(100) NOT NULL,
+        full_name VARCHAR(100) NOT NULL,
         email VARCHAR(100) UNIQUE NOT NULL,
         country VARCHAR(100) NOT NULL,
         password TEXT NOT NULL,
         pin VARCHAR(4) NOT NULL,
         btc_balance NUMERIC(16, 8) DEFAULT 0.0,
         total_earned NUMERIC(16, 8) DEFAULT 0.0,
-        last_mined TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        last_mined TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        suspended BOOLEAN DEFAULT FALSE,
+        deleted BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
-    """)
+""")
 
     # HASHRATES TABLE
     cur.execute("""
