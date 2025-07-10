@@ -397,6 +397,46 @@ def reset_pin():
 
 # === MINING
 
+@app.post("/user/claim-hashrate")
+def claim_hashrate():
+    data = request.get_json()
+    email = data.get("email")
+
+    if not email:
+        return jsonify({"error": "Email is required"}), 400
+
+    conn = get_db()
+    cur = conn.cursor()
+
+    # Get user ID
+    cur.execute("SELECT id FROM users WHERE email = %s", (email,))
+    result = cur.fetchone()
+    if not result:
+        conn.close()
+        return jsonify({"error": "User not found"}), 404
+
+    user_id = result[0]
+
+    # Admin-defined hashrate per ad
+    hashrate_value = 100  # You can change this later to dynamic/admin-configurable
+
+    now = datetime.utcnow()
+    expires_at = now + timedelta(hours=24)
+
+    # Insert hashrate entry
+    cur.execute("""
+        INSERT INTO hashrates (user_id, hashrate, created_at, expires_at)
+        VALUES (%s, %s, %s, %s)
+    """, (user_id, hashrate_value, now, expires_at))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({
+        "message": f"{hashrate_value} H/s granted for 24 hours.",
+        "hashrate": hashrate_value,
+        "expires_at": expires_at.isoformat()
+    }), 200
 
 
 # === RUN SERVER ===
