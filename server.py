@@ -169,7 +169,7 @@ def send_otp_route():
         conn = get_db()
         cur = conn.cursor()
         cur.execute("""
-            INSERT INTO otps (email, code)
+            INSERT INTO otp (email, code)
             VALUES (%s, %s)
             ON CONFLICT (email) DO UPDATE SET code = EXCLUDED.code, created_at = CURRENT_TIMESTAMP
         """, (email, otp))
