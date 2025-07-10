@@ -438,7 +438,44 @@ def reset_pin():
     return jsonify({"message": "PIN reset successful."})
 
 # === MINING
+@app.route('/mine', methods=['POST'])
+def mine_bitcoin():
+    data = request.get_json()
+    email = data.get('email')
 
+    # 1. Validate user exists
+    cur.execute("SELECT * FROM users WHERE email = %s", (email,))
+    user = cur.fetchone()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    # 2. Get admin mining config
+    cur.execute("SELECT btc_per_hashrate, hashrate_per_ad FROM admin_config LIMIT 1")
+    config = cur.fetchone()
+    if not config:
+        return jsonify({"error": "Mining config missing"}), 500
+
+    btc_per_hashrate = config[0]
+    hashrate_awarded = config[1]
+
+    # 3. Calculate BTC earned
+    btc_earned = btc_per_hashrate * hashrate_awarded
+
+    # 4. Update user mined total
+    cur.execute("UPDATE users SET total_mined = total_mined + %s WHERE email = %s", (btc_earned, email))
+    
+    # 5. Record session
+    cur.execute("INSERT INTO mining_sessions (email, hashrate, btc_earned) VALUES (%s, %s, %s)",
+                (email, hashrate_awarded, btc_earned))
+
+    conn.commit()
+
+    # 6. Return updated stats
+    return jsonify({
+        "btc_earned": btc_earned,
+        "hashrate": hashrate_awarded,
+        "total_mined": user[5] + btc_earned  # assuming user[5] is current total_mined
+    })
 
 
 # === RUN SERVER ===
