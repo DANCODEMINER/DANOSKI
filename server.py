@@ -26,17 +26,87 @@ def get_db():
     return psycopg2.connect(DATABASE_URL)
 
 def init_db():
-    conn = get_db()
+    conn = get_db_connection()
     cur = conn.cursor()
-    # Users table
-    
-    
 
-    
+    # USERS TABLE
+    cur.execute("""
+    DROP TABLE IF EXISTS users CASCADE;
+    CREATE TABLE users (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        email VARCHAR(100) UNIQUE NOT NULL,
+        country VARCHAR(100) NOT NULL,
+        password TEXT NOT NULL,
+        pin VARCHAR(4) NOT NULL,
+        btc_balance NUMERIC(16, 8) DEFAULT 0.0,
+        total_earned NUMERIC(16, 8) DEFAULT 0.0,
+        last_mined TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    """)
+
+    # HASHRATES TABLE
+    cur.execute("""
+    DROP TABLE IF EXISTS hashrates;
+    CREATE TABLE hashrates (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        hashrate INTEGER NOT NULL,
+        created_at TIMESTAMP NOT NULL,
+        expires_at TIMESTAMP NOT NULL
+    );
+    """)
+
+    # WITHDRAWALS TABLE
+    cur.execute("""
+    DROP TABLE IF EXISTS withdrawals;
+    CREATE TABLE withdrawals (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        amount NUMERIC(16, 8) NOT NULL,
+        wallet TEXT NOT NULL,
+        status VARCHAR(20) DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    """)
+
+    # MESSAGES TABLE
+    cur.execute("""
+    DROP TABLE IF EXISTS messages;
+    CREATE TABLE messages (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    """)
+
+    # ADMINS TABLE (OPTIONAL)
+    cur.execute("""
+    DROP TABLE IF EXISTS admins;
+    CREATE TABLE admins (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(100) UNIQUE NOT NULL,
+        password TEXT NOT NULL
+    );
+    """)
+
+    # OTP TABLE
+    cur.execute("""
+    DROP TABLE IF EXISTS otp;
+    CREATE TABLE otp (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(100) NOT NULL,
+        code VARCHAR(6) NOT NULL,
+        purpose VARCHAR(50) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    """)
+
     conn.commit()
-    cur.close()
-    conn.close()
-
+    conn.close()    
+    
+    
 # === UTILITIES ===
 
 def send_otp(email, code):
