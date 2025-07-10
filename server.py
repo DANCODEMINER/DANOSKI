@@ -677,6 +677,43 @@ def get_active_hashrates():
 
     return jsonify(hashrates)
 
+@app.post("/user/update-btc")
+def update_btc_balance():
+    data = request.get_json()
+    email = data.get("email")
+    btc_balance = data.get("btc_balance")
+
+    if not email or btc_balance is None:
+        return jsonify({"error": "Missing fields"}), 400
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("""
+        UPDATE users SET btc_balance = %s
+        WHERE email = %s
+    """, (btc_balance, email))
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": "Balance updated."})
+
+@app.get("/user/get-balance")
+def get_user_balance():
+    email = request.args.get("email")
+    if not email:
+        return jsonify({"error": "Email is required"}), 400
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT btc_balance FROM users WHERE email = %s", (email,))
+    row = cur.fetchone()
+    conn.close()
+
+    if row:
+        return jsonify({"btc_balance": float(row[0])})
+    else:
+        return jsonify({"error": "User not found"}), 404
+
 
 # === RUN SERVER ===
 if __name__ == "__main__":
