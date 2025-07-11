@@ -995,6 +995,48 @@ def get_all_users():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.get("/admin/withdrawals")
+def admin_get_withdrawals():
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT u.email, w.amount, w.wallet, w.status, w.created_at
+        FROM withdrawals w
+        JOIN users u ON w.user_id = u.id
+        ORDER BY w.created_at DESC
+    """)
+    rows = cur.fetchall()
+    conn.close()
+
+    result = [
+        {
+            "email": row[0],
+            "amount": float(row[1]),
+            "wallet": row[2],
+            "status": row[3],
+            "created_at": row[4].isoformat()
+        }
+        for row in rows
+    ]
+    return jsonify(result)
+
+@app.post("/admin/add-message")
+def add_message():
+    data = request.get_json()
+    title = data.get("title")
+    content = data.get("content")
+
+    if not title or not content:
+        return jsonify({"error": "Title and content are required."}), 400
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("INSERT INTO messages (title, content) VALUES (%s, %s)", (title, content))
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": "Announcement posted successfully."})
+
 # === RUN SERVER ===
 if __name__ == "__main__":
     import pytz  # required for timezone logic in mining functions
