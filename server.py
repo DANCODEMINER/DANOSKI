@@ -564,45 +564,48 @@ def mine_sync():
         
 @app.post("/user/withdraw")
 def user_withdraw():
-    data = request.get_json()
-    email = data.get("email")
-    amount = float(data.get("amount", 0))
-    wallet = data.get("wallet")
+    try:
+        data = request.get_json()
+        email = data.get("email")
+        amount = float(data.get("amount", 0))
+        wallet = data.get("wallet")
 
-    if not email or not wallet or amount <= 0:
-        return jsonify({"error": "All fields are required."}), 400
+        if not email or not wallet or amount <= 0:
+            return jsonify({"error": "All fields are required."}), 400
 
-    conn = get_db()
-    cur = conn.cursor()
+        conn = get_db()
+        cur = conn.cursor()
 
-    # Get user and balance
-    cur.execute("SELECT id, btc_balance FROM users WHERE email = %s", (email,))
-    row = cur.fetchone()
-    if not row:
+        # Get user and balance
+        cur.execute("SELECT id, btc_balance FROM users WHERE email = %s", (email,))
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            return jsonify({"error": "User not found"}), 404
+
+        user_id, balance = row
+
+        if amount > balance:
+            conn.close()
+            return jsonify({"error": "Insufficient balance."}), 400
+
+        # Deduct balance and insert withdrawal record
+        new_balance = balance - amount
+
+        cur.execute("UPDATE users SET btc_balance = %s WHERE id = %s", (new_balance, user_id))
+        cur.execute("""
+            INSERT INTO withdrawals (user_id, amount, wallet, status, created_at)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (user_id, amount, wallet, 'pending', datetime.utcnow()))
+
+        conn.commit()
         conn.close()
-        return jsonify({"error": "User not found"}), 404
 
-    user_id, balance = row
+        return jsonify({"message": "Withdrawal request submitted.", "new_balance": round(new_balance, 8)}), 200
 
-    if amount > balance:
-        conn.close()
-        return jsonify({"error": "Insufficient balance."}), 400
-
-    # Deduct balance and insert withdrawal record
-    new_balance = balance - amount
-
-    cur.execute("UPDATE users SET btc_balance = %s WHERE id = %s", (new_balance, user_id))
-    cur.execute("""
-        INSERT INTO withdrawals (user_id, amount, wallet, status, created_at)
-        VALUES (%s, %s, %s, %s, %s)
-    """, (user_id, amount, wallet, 'pending', datetime.utcnow()))
-
-    conn.commit()
-    conn.close()
-
-    return jsonify({"message": "Withdrawal request submitted.", "new_balance": round(new_balance, 8)})
-
-
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+        
 @app.get("/user/messages")
 def get_messages():
     conn = get_db()
