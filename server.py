@@ -508,57 +508,58 @@ def user_dashboard():
 
 @app.post("/user/mine-sync")
 def mine_sync():
-    data = request.get_json()
-    email = data.get("email")
+    try:
+        data = request.get_json()
+        email = data.get("email")
 
-    if not email:
-        return jsonify({"error": "Email is required"}), 400
+        if not email:
+            return jsonify({"error": "Email is required"}), 400
 
-    conn = get_db()
-    cur = conn.cursor()
+        conn = get_db()
+        cur = conn.cursor()
 
-    # Get user info
-    cur.execute("SELECT id, btc_balance, total_earned, last_mined FROM users WHERE email = %s", (email,))
-    user = cur.fetchone()
-    if not user:
+        # Get user info
+        cur.execute("SELECT id, btc_balance, total_earned, last_mined FROM users WHERE email = %s", (email,))
+        user = cur.fetchone()
+        if not user:
+            conn.close()
+            return jsonify({"error": "User not found"}), 404
+
+        user_id, btc_balance, total_earned, last_mined = user
+        now = datetime.utcnow()
+        seconds_elapsed = (now - last_mined).total_seconds()
+
+        # Get active hashrate
+        cur.execute("""
+            SELECT COALESCE(SUM(hashrate), 0) FROM hashrates
+            WHERE user_id = %s AND expires_at > %s
+        """, (user_id, now))
+        hashrate = cur.fetchone()[0]
+
+        # Mining formula: BTC = hashrate * seconds * factor
+        mining_factor = 0.00000001
+        mined_btc = hashrate * seconds_elapsed * mining_factor
+
+        new_balance = btc_balance + mined_btc
+        new_total = total_earned + mined_btc
+
+        cur.execute("""
+            UPDATE users
+            SET btc_balance = %s, total_earned = %s, last_mined = %s
+            WHERE id = %s
+        """, (new_balance, new_total, now, user_id))
+
+        conn.commit()
         conn.close()
-        return jsonify({"error": "User not found"}), 404
 
-    user_id, btc_balance, total_earned, last_mined = user
-    now = datetime.utcnow()
-    seconds_elapsed = (now - last_mined).total_seconds()
+        return jsonify({
+            "mined_btc": round(mined_btc, 8),
+            "new_balance": round(new_balance, 8),
+            "hashrate": hashrate
+        }), 200
 
-    # Get active hashrate
-    cur.execute("""
-        SELECT COALESCE(SUM(hashrate), 0) FROM hashrates
-        WHERE user_id = %s AND expires_at > %s
-    """, (user_id, now))
-    hashrate = cur.fetchone()[0]
-
-    # Mining formula: BTC = hashrate * seconds * factor
-    mining_factor = 0.00000001
-    mined_btc = hashrate * seconds_elapsed * mining_factor
-
-    # Update user's BTC balance and last_mined
-    new_balance = btc_balance + mined_btc
-    new_total = total_earned + mined_btc
-
-    cur.execute("""
-        UPDATE users
-        SET btc_balance = %s, total_earned = %s, last_mined = %s
-        WHERE id = %s
-    """, (new_balance, new_total, now, user_id))
-
-    conn.commit()
-    conn.close()
-
-    # ✅ THIS WAS MISSING
-    return jsonify({
-        "mined_btc": round(mined_btc, 8),
-        "new_balance": round(new_balance, 8),
-        "hashrate": hashrate
-    }), 200
-
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.post("/user/withdraw")
 def user_withdraw():
