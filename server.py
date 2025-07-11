@@ -506,7 +506,6 @@ def user_dashboard():
         "last_mined": last_mined.isoformat()
     }), 200
 
-
 @app.post("/user/mine-sync")
 def mine_sync():
     data = request.get_json()
@@ -537,7 +536,7 @@ def mine_sync():
     hashrate = cur.fetchone()[0]
 
     # Mining formula: BTC = hashrate * seconds * factor
-    mining_factor = 0.00000001  # You can adjust this to control mining speed
+    mining_factor = 0.00000001
     mined_btc = hashrate * seconds_elapsed * mining_factor
 
     # Update user's BTC balance and last_mined
@@ -553,11 +552,12 @@ def mine_sync():
     conn.commit()
     conn.close()
 
+    # ✅ THIS WAS MISSING
     return jsonify({
         "mined_btc": round(mined_btc, 8),
         "new_balance": round(new_balance, 8),
         "hashrate": hashrate
-    })
+    }), 200
 
 
 @app.post("/user/withdraw")
