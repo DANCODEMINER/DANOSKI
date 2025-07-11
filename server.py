@@ -968,6 +968,33 @@ def update_admin_password():
         print("Password update error:", e)
         return jsonify({"error": "Failed to update password"}), 500
 
+@app.get("/admin/users")
+def get_all_users():
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+
+        # Query to fetch user details
+        cur.execute("""
+            SELECT id, email, btc_balance, total_earned, hashrate, last_mined
+            FROM users
+        """)
+        users = cur.fetchall()
+        conn.close()
+
+        # Return users as JSON
+        return jsonify([{
+            "id": user[0],
+            "email": user[1],
+            "btc_balance": float(user[2]),
+            "total_earned": float(user[3]),
+            "hashrate": user[4],
+            "last_mined": user[5].isoformat() if user[5] else None
+        } for user in users])
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 # === RUN SERVER ===
 if __name__ == "__main__":
     import pytz  # required for timezone logic in mining functions
