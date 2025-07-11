@@ -843,6 +843,131 @@ def verify_admin_otp():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.post("/admin/login")
+def admin_login():
+    try:
+        data = request.get_json()
+        username = data.get("username")
+        password = data.get("password")
+
+        if not username or not password:
+            return jsonify({"error": "Username and password are required"}), 400
+
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("SELECT password FROM admins WHERE username = %s", (username,))
+        row = cur.fetchone()
+        conn.close()
+
+        if not row:
+            return jsonify({"error": "Admin not found"}), 404
+
+        stored_hash = row[0]
+        if not bcrypt.checkpw(password.encode(), stored_hash.encode()):
+            return jsonify({"error": "Incorrect password"}), 401
+
+        return jsonify({"message": "Login successful"}), 200
+
+    except Exception as e:
+        print("Login error:", e)
+        return jsonify({"error": "Internal server error"}), 500
+
+@app.post("/admin/send-reset-otp")
+def send_reset_otp():
+    try:
+        data = request.get_json()
+        username = data.get("username")
+
+        if not username:
+            return jsonify({"error": "Username is required"}), 400
+
+        # Generate OTP
+        otp = generate_otp()
+
+        # Store OTP in otps table
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO otps (email, code)
+            VALUES (%s, %s)
+            ON CONFLICT (email) DO UPDATE SET code = EXCLUDED.code, created_at = CURRENT_TIMESTAMP
+        """, (username, otp))
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        # Send OTP to admin email
+        send_otp(EMAIL_FROM, otp)
+
+        return jsonify({"message": "OTP sent to admin email"}), 200
+
+    except Exception as e:
+        print("Reset OTP error:", e)
+        return jsonify({"error": "Failed to send reset OTP"}), 500
+
+@app.post("/admin/verify-reset-otp")
+def verify_reset_otp():
+    try:
+        data = request.get_json()
+        username = data.get("username")
+        otp = data.get("otp")
+
+        if not username or not otp:
+            return jsonify({"error": "Username and OTP are required"}), 400
+
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("SELECT code, created_at FROM otps WHERE email = %s", (username,))
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            return jsonify({"error": "OTP not found"}), 400
+
+        saved_otp, created_at = row
+        if otp != saved_otp:
+            conn.close()
+            return jsonify({"error": "Invalid OTP"}), 400
+
+        # Check if OTP expired (optional)
+        if datetime.utcnow() - created_at > timedelta(minutes=10):
+            conn.close()
+            return jsonify({"error": "OTP expired"}), 400
+
+        conn.close()
+        return jsonify({"message": "OTP verified"}), 200
+
+    except Exception as e:
+        print("OTP verify error:", e)
+        return jsonify({"error": "OTP verification failed"}), 500
+
+@app.post("/admin/update-password")
+def update_admin_password():
+    try:
+        data = request.get_json()
+        username = data.get("username")
+        new_password = data.get("new_password")
+
+        if not username or not new_password:
+            return jsonify({"error": "Username and new password required"}), 400
+
+        hashed_pw = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode("utf-8")
+
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("UPDATE admins SET password = %s WHERE username = %s", (hashed_pw, username))
+
+        # Clean up OTP after successful reset
+        cur.execute("DELETE FROM otps WHERE email = %s", (username,))
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return jsonify({"message": "Password updated successfully"}), 200
+
+    except Exception as e:
+        print("Password update error:", e)
+        return jsonify({"error": "Failed to update password"}), 500
+
 # === RUN SERVER ===
 if __name__ == "__main__":
     import pytz  # required for timezone logic in mining functions
