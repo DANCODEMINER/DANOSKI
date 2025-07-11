@@ -9,6 +9,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import pytz
 from decimal import Decimal
+from flask_mail import Message
 
 # === CONFIG ===
 EMAIL_FROM = "adchainminer@gmail.com"
