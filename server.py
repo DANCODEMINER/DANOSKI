@@ -22,6 +22,15 @@ DATABASE_URL = os.getenv("DATABASE_URL")  # Make sure to set this env var in you
 app = Flask(__name__)
 CORS(app)
 
+app.config['MAIL_SERVER'] = SMTP_SERVER
+app.config['MAIL_PORT'] = SMTP_PORT
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = EMAIL_FROM
+app.config['MAIL_PASSWORD'] = EMAIL_PASSWORD
+
+from flask_mail import Mail
+mail = Mail(app)
+
 # === DB SETUP ===
 
 def get_db():
