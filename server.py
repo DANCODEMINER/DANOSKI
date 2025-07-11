@@ -766,19 +766,33 @@ def send_admin_otp():
 
         # Generate 6-digit OTP
         otp = str(random.randint(100000, 999999))
-        otp_store[username] = otp
 
-        # Send OTP to central email
-        msg = Message("Admin Signup OTP",
-                      sender=EMAIL_FROM,
-                      recipients=[EMAIL_FROM])
+        # Store OTP in DB, updating existing one if username exists
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO otps (email, code)
+            VALUES (%s, %s)
+            ON CONFLICT (email) DO UPDATE SET code = EXCLUDED.code, created_at = CURRENT_TIMESTAMP
+        """, (username, otp))
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        # Send OTP email to central admin email
+        msg = Message(
+            "Admin Signup OTP",
+            sender=EMAIL_FROM,
+            recipients=[EMAIL_FROM]
+        )
         msg.body = f"OTP for new admin '{username}': {otp}"
         mail.send(msg)
 
         return jsonify({"message": "OTP sent to admin email"}), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print("Admin OTP error:", e)
+        return jsonify({"error": "Failed to send OTP."}), 500
 
 @app.post("/admin/verify-otp")
 def verify_admin_otp():
