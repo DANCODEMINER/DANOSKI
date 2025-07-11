@@ -755,6 +755,67 @@ def get_withdrawals():
 
     return jsonify(withdrawals), 200
 
+@app.post("/admin/send-otp")
+def send_admin_otp():
+    try:
+        data = request.get_json()
+        username = data.get("username")
+
+        if not username:
+            return jsonify({"error": "Username is required"}), 400
+
+        # Generate 6-digit OTP
+        otp = str(random.randint(100000, 999999))
+        otp_store[username] = otp
+
+        # Send OTP to central email
+        msg = Message("Admin Signup OTP",
+                      sender=EMAIL_FROM,
+                      recipients=[EMAIL_FROM])
+        msg.body = f"OTP for new admin '{username}': {otp}"
+        mail.send(msg)
+
+        return jsonify({"message": "OTP sent to admin email"}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.post("/admin/verify-otp")
+def verify_admin_otp():
+    try:
+        data = request.get_json()
+        username = data.get("username")
+        password = data.get("password")
+        otp = data.get("otp")
+
+        if not username or not password or not otp:
+            return jsonify({"error": "All fields are required"}), 400
+
+        saved_otp = otp_store.get(username)
+        if not saved_otp or otp != saved_otp:
+            return jsonify({"error": "Invalid or expired OTP"}), 400
+
+        # Check if username already exists
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("SELECT id FROM admins WHERE username = %s", (username,))
+        if cur.fetchone():
+            conn.close()
+            return jsonify({"error": "Username already exists"}), 400
+
+        # Create admin
+        hashed_pw = bcrypt.generate_password_hash(password).decode("utf-8")
+        cur.execute("INSERT INTO admins (username, password) VALUES (%s, %s)", (username, hashed_pw))
+        conn.commit()
+        conn.close()
+
+        del otp_store[username]  # Cleanup
+
+        return jsonify({"message": "Admin account created successfully"}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 # === RUN SERVER ===
 if __name__ == "__main__":
