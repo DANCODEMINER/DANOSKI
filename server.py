@@ -567,7 +567,7 @@ def user_withdraw():
     try:
         data = request.get_json()
         email = data.get("email")
-        amount = float(data.get("amount", 0))
+        amount = Decimal(str(data.get("amount", 0)))
         wallet = data.get("wallet")
 
         if not email or not wallet or amount <= 0:
@@ -601,7 +601,7 @@ def user_withdraw():
         conn.commit()
         conn.close()
 
-        return jsonify({"message": "Withdrawal request submitted.", "new_balance": round(new_balance, 8)}), 200
+        return jsonify({"message": "Withdrawal request submitted.", "new_balance": float(new_balance)}), 200
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
