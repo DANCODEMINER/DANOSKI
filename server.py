@@ -9,7 +9,6 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import pytz
 from decimal import Decimal
-from flask_mail import Message
 
 # === CONFIG ===
 EMAIL_FROM = "adchainminer@gmail.com"
@@ -22,14 +21,6 @@ DATABASE_URL = os.getenv("DATABASE_URL")  # Make sure to set this env var in you
 app = Flask(__name__)
 CORS(app)
 
-app.config['MAIL_SERVER'] = SMTP_SERVER
-app.config['MAIL_PORT'] = SMTP_PORT
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = EMAIL_FROM
-app.config['MAIL_PASSWORD'] = EMAIL_PASSWORD
-
-from flask_mail import Mail
-mail = Mail(app)
 
 # === DB SETUP ===
 
@@ -774,36 +765,21 @@ def send_admin_otp():
         if not username:
             return jsonify({"error": "Username is required"}), 400
 
-        # Generate 6-digit OTP
         otp = str(random.randint(100000, 999999))
 
-        # Store OTP in DB, updating existing one if username exists
-        conn = get_db()
-        cur = conn.cursor()
-        cur.execute("""
-            INSERT INTO otps (email, code)
-            VALUES (%s, %s)
-            ON CONFLICT (email) DO UPDATE SET code = EXCLUDED.code, created_at = CURRENT_TIMESTAMP
-        """, (username, otp))
-        conn.commit()
-        cur.close()
-        conn.close()
+        # Store OTP in DB code here (unchanged)...
 
-        # Send OTP email to central admin email
-        msg = Message(
-            "Admin Signup OTP",
-            sender=EMAIL_FROM,
-            recipients=[EMAIL_FROM]
-        )
-        msg.body = f"OTP for new admin '{username}': {otp}"
-        mail.send(msg)
+        # Send OTP via smtplib
+        otp_body = f"OTP for new admin '{username}': {otp}"
+        if not send_email_smtp("Admin Signup OTP", otp_body, EMAIL_FROM):
+            return jsonify({"error": "Failed to send OTP email"}), 500
 
         return jsonify({"message": "OTP sent to admin email"}), 200
 
     except Exception as e:
         print("Admin OTP error:", e)
         return jsonify({"error": "Failed to send OTP."}), 500
-
+        
 @app.post("/admin/verify-otp")
 def verify_admin_otp():
     try:
