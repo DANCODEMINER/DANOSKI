@@ -799,31 +799,49 @@ def verify_admin_otp():
         if not username or not password or not otp:
             return jsonify({"error": "All fields are required"}), 400
 
-        saved_otp = otp_store.get(username)
-        if not saved_otp or otp != saved_otp:
-            return jsonify({"error": "Invalid or expired OTP"}), 400
-
-        # Check if username already exists
         conn = get_db()
         cur = conn.cursor()
+
+        # Fetch saved OTP from DB
+        cur.execute("SELECT code, created_at FROM otps WHERE email = %s", (username,))
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            return jsonify({"error": "OTP not found or expired"}), 400
+
+        saved_otp, created_at = row
+
+        # Optional: check OTP expiration (e.g., 5 minutes)
+        if datetime.utcnow() - created_at > timedelta(minutes=5):
+            conn.close()
+            return jsonify({"error": "OTP expired"}), 400
+
+        if otp != saved_otp:
+            conn.close()
+            return jsonify({"error": "Invalid OTP"}), 400
+
+        # Check if username already exists
         cur.execute("SELECT id FROM admins WHERE username = %s", (username,))
         if cur.fetchone():
             conn.close()
             return jsonify({"error": "Username already exists"}), 400
 
-        # Create admin
-        hashed_pw = bcrypt.generate_password_hash(password).decode("utf-8")
+        # Create admin user with hashed password
+        hashed_pw = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode("utf-8")
         cur.execute("INSERT INTO admins (username, password) VALUES (%s, %s)", (username, hashed_pw))
         conn.commit()
-        conn.close()
 
-        del otp_store[username]  # Cleanup
+        # Delete used OTP from DB
+        cur.execute("DELETE FROM otps WHERE email = %s", (username,))
+        conn.commit()
+
+        cur.close()
+        conn.close()
 
         return jsonify({"message": "Admin account created successfully"}), 200
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 # === RUN SERVER ===
 if __name__ == "__main__":
