@@ -611,37 +611,18 @@ def user_withdraw():
 def get_messages():
     conn = get_db()
     cur = conn.cursor()
-    cur.execute("SELECT title, content, created_at FROM messages ORDER BY created_at DESC")
-    rows = cur.fetchall()
+    cur.execute("SELECT title, content, created_at FROM messages ORDER BY created_at DESC LIMIT 1")
+    row = cur.fetchone()
     conn.close()
 
-    messages = [
-        {
-            "title": row[0],
-            "content": row[1],
-            "created_at": row[2].isoformat()
-        }
-        for row in rows
-    ]
+    if not row:
+        return jsonify({})  # No announcement available
 
-    return jsonify(messages)
-
-@app.post("/admin/add-message")
-def add_message():
-    data = request.get_json()
-    title = data.get("title")
-    content = data.get("content")
-
-    if not title or not content:
-        return jsonify({"error": "Title and content are required."}), 400
-
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("INSERT INTO messages (title, content) VALUES (%s, %s)", (title, content))
-    conn.commit()
-    conn.close()
-
-    return jsonify({"message": "Announcement posted successfully."})
+    return jsonify({
+        "title": row[0],
+        "content": row[1],
+        "created_at": row[2].isoformat()
+    })
 
 @app.get("/user/hashrates")
 def get_active_hashrates():
@@ -1020,23 +1001,6 @@ def admin_get_withdrawals():
     ]
     return jsonify(result)
 
-@app.post("/admin/add-message")
-def add_message():
-    data = request.get_json()
-    title = data.get("title")
-    content = data.get("content")
-
-    if not title or not content:
-        return jsonify({"error": "Title and content are required."}), 400
-
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("INSERT INTO messages (title, content) VALUES (%s, %s)", (title, content))
-    conn.commit()
-    conn.close()
-
-    return jsonify({"message": "Announcement posted successfully."})
-
 @app.get("/admin/withdrawals")
 def view_withdrawals():
     conn = get_db()
@@ -1077,6 +1041,41 @@ def update_withdrawal():
     conn.close()
 
     return jsonify({"message": f"Withdrawal {status}."})
+
+@app.post("/admin/add-message")
+def add_message():
+    data = request.get_json()
+    title = data.get("title")
+    content = data.get("content")
+
+    if not title or not content:
+        return jsonify({"error": "Title and content are required."}), 400
+
+    conn = get_db()
+    cur = conn.cursor()
+
+    # Clear existing message (so only one is always present)
+    cur.execute("DELETE FROM messages")
+
+    # Insert new message
+    cur.execute("INSERT INTO messages (title, content, created_at) VALUES (%s, %s, %s)",
+                (title, content, datetime.utcnow()))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": "Announcement posted successfully."})
+
+@app.delete("/admin/delete-message")
+def delete_message():
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute("DELETE FROM messages")
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": "Announcement deleted successfully."})
 
 # === RUN SERVER ===
 if __name__ == "__main__":
