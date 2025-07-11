@@ -765,14 +765,22 @@ def send_admin_otp():
         if not username:
             return jsonify({"error": "Username is required"}), 400
 
-        otp = str(random.randint(100000, 999999))
+        otp = generate_otp()
 
-        # Store OTP in DB code here (unchanged)...
+        # Save OTP in your DB (same as your user route)
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO otps (email, code)
+            VALUES (%s, %s)
+            ON CONFLICT (email) DO UPDATE SET code = EXCLUDED.code, created_at = CURRENT_TIMESTAMP
+        """, (username, otp))
+        conn.commit()
+        cur.close()
+        conn.close()
 
-        # Send OTP via smtplib
-        otp_body = f"OTP for new admin '{username}': {otp}"
-        if not send_email_smtp("Admin Signup OTP", otp_body, EMAIL_FROM):
-            return jsonify({"error": "Failed to send OTP email"}), 500
+        # Send OTP email to central admin email (your EMAIL_FROM)
+        send_otp(EMAIL_FROM, otp)
 
         return jsonify({"message": "OTP sent to admin email"}), 200
 
