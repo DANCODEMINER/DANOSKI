@@ -1037,6 +1037,47 @@ def add_message():
 
     return jsonify({"message": "Announcement posted successfully."})
 
+@app.get("/admin/withdrawals")
+def view_withdrawals():
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT w.id, u.email, w.amount, w.wallet, w.status, w.created_at
+        FROM withdrawals w
+        JOIN users u ON w.user_id = u.id
+        ORDER BY w.created_at DESC
+    """)
+    rows = cur.fetchall()
+    conn.close()
+
+    withdrawals = [{
+        "id": row[0],
+        "email": row[1],
+        "amount": float(row[2]),
+        "wallet": row[3],
+        "status": row[4],
+        "created_at": row[5].isoformat()
+    } for row in rows]
+
+    return jsonify(withdrawals)
+
+@app.post("/admin/update-withdrawal")
+def update_withdrawal():
+    data = request.get_json()
+    withdrawal_id = data.get("id")
+    status = data.get("status")
+
+    if status not in ["approved", "rejected"]:
+        return jsonify({"error": "Invalid status"}), 400
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("UPDATE withdrawals SET status = %s WHERE id = %s", (status, withdrawal_id))
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": f"Withdrawal {status}."})
+
 # === RUN SERVER ===
 if __name__ == "__main__":
     import pytz  # required for timezone logic in mining functions
