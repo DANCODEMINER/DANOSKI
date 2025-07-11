@@ -719,6 +719,42 @@ def get_user_balance():
     else:
         return jsonify({"error": "User not found"}), 404
 
+@app.get("/user/withdrawals")
+def get_withdrawals():
+    email = request.args.get("email")
+    if not email:
+        return jsonify({"error": "Email is required"}), 400
+
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute("SELECT id FROM users WHERE email = %s", (email,))
+    result = cur.fetchone()
+    if not result:
+        conn.close()
+        return jsonify({"error": "User not found"}), 404
+
+    user_id = result[0]
+
+    cur.execute("""
+        SELECT amount, wallet, status, created_at
+        FROM withdrawals
+        WHERE user_id = %s
+        ORDER BY created_at DESC
+    """, (user_id,))
+
+    rows = cur.fetchall()
+    conn.close()
+
+    withdrawals = [{
+        "amount": float(r[0]),
+        "wallet": r[1],
+        "status": r[2],
+        "created_at": r[3].isoformat()
+    } for r in rows]
+
+    return jsonify(withdrawals), 200
+
 
 # === RUN SERVER ===
 if __name__ == "__main__":
