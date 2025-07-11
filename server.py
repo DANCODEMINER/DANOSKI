@@ -8,6 +8,7 @@ from email.mime.text import MIMEText
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import pytz
+from decimal import Decimal
 
 # === CONFIG ===
 EMAIL_FROM = "adchainminer@gmail.com"
@@ -527,7 +528,7 @@ def mine_sync():
 
         user_id, btc_balance, total_earned, last_mined = user
         now = datetime.utcnow()
-        seconds_elapsed = (now - last_mined).total_seconds()
+        seconds_elapsed = Decimal(str((now - last_mined).total_seconds()))
 
         # Get active hashrate
         cur.execute("""
@@ -537,8 +538,8 @@ def mine_sync():
         hashrate = cur.fetchone()[0]
 
         # Mining formula: BTC = hashrate * seconds * factor
-        mining_factor = 0.00000001
-        mined_btc = hashrate * seconds_elapsed * mining_factor
+        mining_factor = Decimal("0.00000001")
+        mined_btc = Decimal(str(hashrate)) * seconds_elapsed * mining_factor
 
         new_balance = btc_balance + mined_btc
         new_total = total_earned + mined_btc
@@ -553,14 +554,14 @@ def mine_sync():
         conn.close()
 
         return jsonify({
-            "mined_btc": round(mined_btc, 8),
-            "new_balance": round(new_balance, 8),
+            "mined_btc": float(round(mined_btc, 8)),
+            "new_balance": float(round(new_balance, 8)),
             "hashrate": hashrate
         }), 200
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
+        
 @app.post("/user/withdraw")
 def user_withdraw():
     data = request.get_json()
