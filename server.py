@@ -1077,6 +1077,44 @@ def delete_message():
 
     return jsonify({"message": "Announcement deleted successfully."})
 
+@app.post("/admin/set-hashrate")
+def set_hashrate():
+    data = request.get_json()
+    new_hashrate = data.get("hashrate")
+
+    if new_hashrate is None or not isinstance(new_hashrate, int) or new_hashrate <= 0:
+        return jsonify({"error": "Hashrate must be a positive integer."}), 400
+
+    conn = get_db()
+    cur = conn.cursor()
+
+    # Check if setting exists
+    cur.execute("SELECT COUNT(*) FROM settings WHERE key = 'hashrate'")
+    exists = cur.fetchone()[0]
+
+    if exists:
+        cur.execute("UPDATE settings SET value = %s WHERE key = 'hashrate'", (str(new_hashrate),))
+    else:
+        cur.execute("INSERT INTO settings (key, value) VALUES ('hashrate', %s)", (str(new_hashrate),))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": f"Hashrate set to {new_hashrate} H/s"}), 200
+
+@app.get("/admin/get-hashrate")
+def get_hashrate():
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT value FROM settings WHERE key = 'hashrate'")
+    row = cur.fetchone()
+    conn.close()
+
+    if row:
+        return jsonify({"hashrate": int(row[0])})
+    else:
+        return jsonify({"hashrate": 100})  # default fallback
+
 # === RUN SERVER ===
 if __name__ == "__main__":
     import pytz  # required for timezone logic in mining functions
