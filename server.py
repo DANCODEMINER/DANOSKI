@@ -1109,7 +1109,7 @@ def set_hashrate():
 def get_hashrate():
     conn = get_db()
     cur = conn.cursor()
-    cur.execute("SELECT value FROM settings WHERE key = 'hashrate'")
+    cur.execute("SELECT value FROM settings WHERE key = 'hashrate_per_ad'")
     row = cur.fetchone()
     conn.close()
 
@@ -1117,7 +1117,6 @@ def get_hashrate():
         return jsonify({"hashrate": int(row[0])})
     else:
         return jsonify({"hashrate": 100})  # default fallback
-
 # === RUN SERVER ===
 if __name__ == "__main__":
     import pytz  # required for timezone logic in mining functions
