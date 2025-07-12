@@ -431,7 +431,6 @@ def reset_pin():
     return jsonify({"message": "PIN reset successful."})
 
 # === MINING
-
 @app.post("/user/claim-hashrate")
 def claim_hashrate():
     data = request.get_json()
@@ -452,8 +451,14 @@ def claim_hashrate():
 
     user_id = result[0]
 
-    # Admin-defined hashrate per ad
-    hashrate_value = 100  # You can change this later to dynamic/admin-configurable
+    # ✅ Fetch admin-defined hashrate from settings table
+    cur.execute("SELECT value FROM settings WHERE key = 'hashrate_per_ad'")
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        return jsonify({"error": "Hashrate setting not found"}), 500
+
+    hashrate_value = int(row[0])
 
     now = datetime.utcnow()
     expires_at = now + timedelta(hours=24)
