@@ -1084,28 +1084,26 @@ def delete_message():
 
 @app.post("/admin/set-hashrate")
 def set_hashrate():
-    data = request.get_json()
-    new_hashrate = data.get("hashrate")
+    try:
+        data = request.get_json()
+        value = int(data.get("value"))
 
-    if new_hashrate is None or not isinstance(new_hashrate, int) or new_hashrate <= 0:
-        return jsonify({"error": "Hashrate must be a positive integer."}), 400
+        conn = get_db()
+        cur = conn.cursor()
 
-    conn = get_db()
-    cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO settings (key, value)
+            VALUES ('hashrate_per_ad', %s)
+            ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+        """, (value,))
 
-    # Check if setting exists
-    cur.execute("SELECT COUNT(*) FROM settings WHERE key = 'hashrate'")
-    exists = cur.fetchone()[0]
+        conn.commit()
+        conn.close()
 
-    if exists:
-        cur.execute("UPDATE settings SET value = %s WHERE key = 'hashrate'", (str(new_hashrate),))
-    else:
-        cur.execute("INSERT INTO settings (key, value) VALUES ('hashrate', %s)", (str(new_hashrate),))
+        return jsonify({"message": f"Hashrate per ad updated to {value} H/s."})
 
-    conn.commit()
-    conn.close()
-
-    return jsonify({"message": f"Hashrate set to {new_hashrate} H/s"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.get("/admin/get-hashrate")
 def get_hashrate():
