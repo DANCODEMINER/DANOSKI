@@ -19,7 +19,7 @@ SITE_NAME = "Adchain Miner"
 DATABASE_URL = os.getenv("DATABASE_URL")  # Make sure to set this env var in your deployment
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
 
 # === DB SETUP ===
