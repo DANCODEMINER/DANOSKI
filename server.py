@@ -659,6 +659,13 @@ def get_active_hashrates():
     """, (user_id,))
 
     rows = cur.fetchall()
+
+    # ✅ Sum up current hashrate
+    total_hashrate = sum(r[0] for r in rows)
+
+    # ✅ Update users table with the total hashrate
+    cur.execute("UPDATE users SET hashrate = %s WHERE id = %s", (total_hashrate, user_id))
+
     conn.commit()
     conn.close()
 
